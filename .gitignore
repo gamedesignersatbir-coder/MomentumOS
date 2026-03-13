@@ -6,3 +6,4 @@ dist
 momentum-os.db
 tsconfig.tsbuildinfo
 tsconfig.typecheck.tsbuildinfo
+.superpowers/
