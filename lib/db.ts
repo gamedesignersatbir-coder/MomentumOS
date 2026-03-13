@@ -227,7 +227,7 @@ function seedIfNeeded() {
 
 export function getDashboardData(): DashboardData {
   const priorities = toPlainObject(
-    db.prepare("SELECT id, title, detail, status, rank FROM priorities ORDER BY rank ASC, id ASC LIMIT 3").all()
+    db.prepare("SELECT id, title, detail, status, rank, intensity, updated_at FROM priorities ORDER BY rank ASC, id ASC").all()
   ) as DashboardData["priorities"];
   const focusBlocks = toPlainObject(
     db
@@ -237,7 +237,7 @@ export function getDashboardData(): DashboardData {
       .all()
   ) as DashboardData["focusBlocks"];
   const quickTasks = toPlainObject(
-    db.prepare("SELECT id, title, status FROM quick_tasks ORDER BY id DESC LIMIT 8").all()
+    db.prepare("SELECT id, title, status FROM quick_tasks ORDER BY id DESC").all()
   ) as DashboardData["quickTasks"];
   const learningEntries = toPlainObject(
     db

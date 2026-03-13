@@ -8,6 +8,7 @@ import {
   addLearningEntry,
   addPriority,
   addQuickTask,
+  recordGreetingShown,
   saveReflection,
   toggleFocusBlock,
   togglePriority,
@@ -117,4 +118,8 @@ export async function saveReflectionAction(formData: FormData) {
   const suggestion = saveReflection(input);
   revalidatePath("/");
   return { ok: true, message: "Reflection captured.", suggestion };
+}
+
+export async function recordGreetingAction(messageId: string): Promise<void> {
+  recordGreetingShown(messageId);
 }

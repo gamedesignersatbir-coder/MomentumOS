@@ -5,6 +5,8 @@ export type DashboardData = {
     detail: string;
     status: string;
     rank: number;
+    intensity?: string | null;
+    updated_at?: string;
   }>;
   focusBlocks: Array<{
     id: number;

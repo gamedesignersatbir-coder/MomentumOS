@@ -34,8 +34,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { format } from "date-fns";
+
 import { cx } from "@/lib/utils";
-import type { DashboardData } from "@/lib/types";
+import type { TimeMode } from "@/lib/time-mode";
+import type { GreetingMessage } from "@/lib/greetings-library";
+import type { DashboardData, UserProfile } from "@/lib/types";
 
 const completionTone = ["bg-rose-300/70", "bg-amber-300/70", "bg-cyan-300/70", "bg-emerald-300/70"];
 
@@ -43,13 +47,20 @@ async function copyToClipboard(value: string) {
   await navigator.clipboard.writeText(value);
 }
 
+interface Props {
+  data: DashboardData;
+  greeting: GreetingMessage;
+  currentMode: TimeMode;
+  userProfile: UserProfile | null;
+}
+
 export function MomentumDashboard({
   data,
-  todayLabel
-}: {
-  data: DashboardData;
-  todayLabel: string;
-}) {
+  greeting: _greeting,
+  currentMode: _currentMode,
+  userProfile: _userProfile,
+}: Props) {
+  const todayLabel = format(new Date(), "EEEE, MMM d");
   const router = useRouter();
   const { pushToast } = useToast();
   const [isReflectionOpen, setIsReflectionOpen] = useState(false);
@@ -556,3 +567,5 @@ function KeyboardShortcuts({
 
   return null;
 }
+
+export default MomentumDashboard;
