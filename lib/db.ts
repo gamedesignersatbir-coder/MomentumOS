@@ -4,7 +4,7 @@ import path from "node:path";
 import { format, subDays } from "date-fns";
 
 import { buildNextDaySuggestion } from "@/lib/reflection";
-import type { DashboardData } from "@/lib/types";
+import type { DashboardData, UserProfile } from "@/lib/types";
 
 const databasePath = path.join(process.cwd(), "momentum-os.db");
 
@@ -79,6 +79,25 @@ function initializeDatabase(database: DatabaseSync) {
       suggestion TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS user_profile (
+      id INTEGER PRIMARY KEY,
+      display_name TEXT NOT NULL DEFAULT 'Satbir',
+      timezone TEXT NOT NULL DEFAULT 'Asia/Kolkata',
+      sadhana_morning_end INTEGER NOT NULL DEFAULT 480,
+      sadhana_afternoon_start INTEGER NOT NULL DEFAULT 840,
+      sadhana_afternoon_end INTEGER NOT NULL DEFAULT 900,
+      work_start INTEGER NOT NULL DEFAULT 480,
+      work_end INTEGER NOT NULL DEFAULT 1110,
+      domains_json TEXT NOT NULL DEFAULT '["AI","game design","gaming","tech"]',
+      about_me TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS greeting_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id TEXT NOT NULL,
+      shown_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
     CREATE TRIGGER IF NOT EXISTS priorities_updated_at
     AFTER UPDATE ON priorities
     BEGIN
@@ -95,6 +114,17 @@ function seedIfNeeded() {
   const existing = db.prepare("SELECT COUNT(*) as count FROM priorities").get() as { count: number };
   if (existing.count > 0) {
     return;
+  }
+
+  // Seed default profile if none exists
+  const profileCount = db.prepare(
+    'SELECT COUNT(*) as count FROM user_profile'
+  ).get() as { count: number };
+  if (profileCount.count === 0) {
+    db.prepare(`
+      INSERT INTO user_profile (id, display_name, timezone, about_me)
+      VALUES (1, 'Satbir', 'Asia/Kolkata', 'Game designer. Meditator. Curious about AI and game design.')
+    `).run();
   }
 
   const priorities = [
@@ -391,4 +421,40 @@ export function saveReflection(input: {
   ).run(input.energyWin, input.learningEdge, input.familyNote, suggestion, dayKey(new Date()));
 
   return suggestion;
+}
+
+// --- User Profile ---
+
+export function getUserProfile(): UserProfile | null {
+  return db
+    .prepare('SELECT * FROM user_profile WHERE id = 1')
+    .get() as UserProfile | null;
+}
+
+export function updateUserProfile(updates: Partial<Omit<UserProfile, 'id' | 'created_at'>>): void {
+  const fields = Object.keys(updates)
+    .map((k) => `${k} = ?`)
+    .join(', ');
+  const values = [...Object.values(updates), new Date().toISOString()];
+  db.prepare(
+    `UPDATE user_profile SET ${fields}, updated_at = ? WHERE id = 1`
+  ).run(...values);
+}
+
+// --- Greeting History ---
+
+export function getRecentGreetingIds(withinDays = 30): string[] {
+  const cutoff = new Date(Date.now() - withinDays * 86400 * 1000).toISOString();
+  const rows = db
+    .prepare(
+      'SELECT message_id FROM greeting_history WHERE shown_at > ? ORDER BY shown_at DESC'
+    )
+    .all(cutoff) as { message_id: string }[];
+  return rows.map((r) => r.message_id);
+}
+
+export function recordGreetingShown(messageId: string): void {
+  db.prepare(
+    'INSERT INTO greeting_history (message_id) VALUES (?)'
+  ).run(messageId);
 }
