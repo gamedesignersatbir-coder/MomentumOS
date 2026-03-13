@@ -36,7 +36,9 @@ function initializeDatabase(database: DatabaseSync) {
       detail TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'active',
       rank INTEGER NOT NULL,
-      created_at TEXT NOT NULL
+      intensity TEXT CHECK(intensity IN ('Deep','Steady','Light')) DEFAULT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS focus_blocks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,6 +79,11 @@ function initializeDatabase(database: DatabaseSync) {
       suggestion TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+    CREATE TRIGGER IF NOT EXISTS priorities_updated_at
+    AFTER UPDATE ON priorities
+    BEGIN
+      UPDATE priorities SET updated_at = datetime('now') WHERE id = NEW.id;
+    END;
   `);
 }
 
