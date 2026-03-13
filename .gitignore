@@ -1,0 +1,8 @@
+.next
+node_modules
+coverage
+dist
+*.log
+momentum-os.db
+tsconfig.tsbuildinfo
+tsconfig.typecheck.tsbuildinfo

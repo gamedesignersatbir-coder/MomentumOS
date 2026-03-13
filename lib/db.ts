@@ -1,0 +1,387 @@
+import { DatabaseSync } from "node:sqlite";
+import path from "node:path";
+
+import { format, subDays } from "date-fns";
+
+import { buildNextDaySuggestion } from "@/lib/reflection";
+import type { DashboardData } from "@/lib/types";
+
+const databasePath = path.join(process.cwd(), "momentum-os.db");
+
+declare global {
+  var momentumDatabase: DatabaseSync | undefined;
+}
+
+const db = globalThis.momentumDatabase ?? new DatabaseSync(databasePath);
+
+if (!globalThis.momentumDatabase) {
+  initializeDatabase(db);
+  seedIfNeeded();
+  globalThis.momentumDatabase = db;
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function dayKey(date: Date) {
+  return format(date, "yyyy-MM-dd");
+}
+
+function initializeDatabase(database: DatabaseSync) {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS priorities (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      detail TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      rank INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS focus_blocks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      label TEXT NOT NULL,
+      start_time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
+      intensity TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS quick_tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS learning_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      topic TEXT NOT NULL,
+      minutes INTEGER NOT NULL,
+      notes TEXT NOT NULL,
+      confidence INTEGER NOT NULL,
+      next_action TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS prompts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      tags TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS reflections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      energy_win TEXT NOT NULL,
+      learning_edge TEXT NOT NULL,
+      family_note TEXT NOT NULL,
+      suggestion TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+  `);
+}
+
+function toPlainObject<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function seedIfNeeded() {
+  const existing = db.prepare("SELECT COUNT(*) as count FROM priorities").get() as { count: number };
+  if (existing.count > 0) {
+    return;
+  }
+
+  const priorities = [
+    ["Tune boss telegraph timings", "Tighten readability in Satbir's arena combat prototype.", 1, "done", subDays(new Date(), 0)],
+    ["Complete 45-minute agentic AI study", "Extract one pattern worth testing inside the design workflow.", 2, "active", subDays(new Date(), 0)],
+    ["Lock in family dinner and school pickup plan", "Preserve the evening window before any extra work spills over.", 3, "active", subDays(new Date(), 0)]
+  ];
+
+  for (const [title, detail, rank, status, date] of priorities) {
+    db.prepare(
+      "INSERT INTO priorities (title, detail, rank, status, created_at) VALUES (?, ?, ?, ?, ?)"
+    ).run(title, detail, rank, status, dayKey(date as Date));
+  }
+
+  const focusBlocks = [
+    ["Combat feel iteration", "09:00", "10:30", "Deep", "done"],
+    ["AI notes distillation", "14:00", "14:45", "Steady", "active"]
+  ];
+
+  for (const [label, start, end, intensity, status] of focusBlocks) {
+    db.prepare(
+      "INSERT INTO focus_blocks (label, start_time, end_time, intensity, status, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run(label, start, end, intensity, status, dayKey(new Date()));
+  }
+
+  for (const task of ["Message composer about adaptive soundtrack pass", "Book Saturday park time with family", "Refine AI prompt taxonomy"]) {
+    db.prepare("INSERT INTO quick_tasks (title, status, created_at) VALUES (?, 'active', ?)").run(task, dayKey(new Date()));
+  }
+
+  const learningEntries = [
+    [
+      "Agent loops for NPC prototyping",
+      35,
+      "Compared planning-first versus tool-first flows. Tool-first is faster, but it drifts unless the output target is concrete.",
+      4,
+      "Prototype a two-step encounter-brief generator tomorrow.",
+      subDays(new Date(), 1)
+    ],
+    [
+      "Juice in action game feedback",
+      25,
+      "Screen shake and anticipation frames matter most when paired with readable recovery windows.",
+      3,
+      "Record before/after clips for the current boss fight.",
+      new Date()
+    ]
+  ];
+
+  for (const [topic, minutes, notes, confidence, nextAction, date] of learningEntries) {
+    db.prepare(
+      "INSERT INTO learning_entries (topic, minutes, notes, confidence, next_action, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run(topic, minutes, notes, confidence, nextAction, dayKey(date as Date));
+  }
+
+  const prompts = [
+    [
+      "Boss Encounter Tension Pass",
+      "Review this boss encounter and propose three changes that increase tension without adding mechanical complexity. Include telegraphing, pacing, and recovery windows.",
+      "game-design,balance,bosses"
+    ],
+    [
+      "AI Learning Synthesis",
+      "Summarize the strongest idea from today's AI reading, one weakness in my understanding, and one experiment I can run in under 30 minutes.",
+      "ai-learning,study,experiments"
+    ],
+    [
+      "Family Calendar Buffer Check",
+      "Look at tomorrow's commitments and suggest the safest work block that protects family obligations, commute time, and recovery margin.",
+      "family,planning,routines"
+    ]
+  ];
+
+  for (const [title, content, tags] of prompts) {
+    db.prepare("INSERT INTO prompts (title, content, tags, created_at) VALUES (?, ?, ?, ?)").run(
+      title,
+      content,
+      tags,
+      dayKey(new Date())
+    );
+  }
+
+  const seededSuggestion = buildNextDaySuggestion({
+    energyWin: "Early deep work on combat feel created momentum.",
+    learningEdge: "Need one more pass on AI workflow constraints.",
+    familyNote: "Dinner stayed calm because the evening was protected.",
+    outstandingPriorities: 2,
+    learningConfidenceAverage: 3.5
+  });
+
+  db.prepare(
+    "INSERT INTO reflections (energy_win, learning_edge, family_note, suggestion, created_at) VALUES (?, ?, ?, ?, ?)"
+  ).run(
+    "Early deep work on combat feel created momentum.",
+    "Need one more pass on AI workflow constraints.",
+    "Dinner stayed calm because the evening was protected.",
+    seededSuggestion,
+    dayKey(subDays(new Date(), 1))
+  );
+}
+
+export function getDashboardData(): DashboardData {
+  const priorities = toPlainObject(
+    db.prepare("SELECT id, title, detail, status, rank FROM priorities ORDER BY rank ASC, id ASC LIMIT 3").all()
+  ) as DashboardData["priorities"];
+  const focusBlocks = toPlainObject(
+    db
+      .prepare(
+        "SELECT id, label, start_time as startTime, end_time as endTime, intensity, status FROM focus_blocks ORDER BY start_time ASC"
+      )
+      .all()
+  ) as DashboardData["focusBlocks"];
+  const quickTasks = toPlainObject(
+    db.prepare("SELECT id, title, status FROM quick_tasks ORDER BY id DESC LIMIT 8").all()
+  ) as DashboardData["quickTasks"];
+  const learningEntries = toPlainObject(
+    db
+      .prepare(
+        "SELECT id, topic, minutes, notes, confidence, next_action as nextAction FROM learning_entries ORDER BY id DESC LIMIT 5"
+      )
+      .all()
+  ) as DashboardData["learningEntries"];
+  const prompts = (
+    toPlainObject(db.prepare("SELECT id, title, content, tags FROM prompts ORDER BY id DESC").all()) as Array<{
+      id: number;
+      title: string;
+      content: string;
+      tags: string;
+    }>
+  ).map((prompt) => ({ ...prompt, tags: prompt.tags.split(",") }));
+
+  const completedPriorities = priorities.filter((item) => item.status === "done").length;
+  const completedFocusBlocks = focusBlocks.filter((item) => item.status === "done").length;
+  const completedQuickTasks = quickTasks.filter((item) => item.status === "done").length;
+  const learningMinutesWeek = (
+    db
+      .prepare("SELECT COALESCE(SUM(minutes), 0) as total FROM learning_entries WHERE created_at >= ?")
+      .get(dayKey(subDays(new Date(), 6))) as { total: number }
+  ).total;
+
+  const weeklyTrend = Array.from({ length: 7 }, (_, index) => {
+    const date = subDays(new Date(), 6 - index);
+    const key = dayKey(date);
+    const priorityDone = (
+      db.prepare("SELECT COUNT(*) as count FROM priorities WHERE created_at = ? AND status = 'done'").get(key) as {
+        count: number;
+      }
+    ).count;
+    const priorityTotal = (
+      db.prepare("SELECT COUNT(*) as count FROM priorities WHERE created_at = ?").get(key) as { count: number }
+    ).count;
+    const sprintMinutes = (
+      db.prepare("SELECT COALESCE(SUM(minutes), 0) as total FROM learning_entries WHERE created_at = ?").get(key) as {
+        total: number;
+      }
+    ).total;
+    const completionRate = Math.min(
+      100,
+      Math.round((priorityDone / Math.max(priorityTotal, 1)) * 70 + Math.min(sprintMinutes, 60) * 0.5)
+    );
+
+    return {
+      date: key,
+      label: format(date, "EEE"),
+      completionRate
+    };
+  });
+
+  const activeDates = new Set<string>();
+  for (const table of ["priorities", "learning_entries", "reflections"]) {
+    const rows = db
+      .prepare(`SELECT DISTINCT created_at as createdAt FROM ${table} ORDER BY created_at DESC LIMIT 14`)
+      .all() as Array<{ createdAt: string }>;
+    rows.forEach((row) => activeDates.add(row.createdAt));
+  }
+
+  let streakDays = 0;
+  for (let offset = 0; offset < 14; offset += 1) {
+    const date = dayKey(subDays(new Date(), offset));
+    if (activeDates.has(date)) {
+      streakDays += 1;
+      continue;
+    }
+    break;
+  }
+
+  const confidenceAverage =
+    learningEntries.reduce((sum, item) => sum + item.confidence, 0) / Math.max(learningEntries.length, 1);
+  const latestReflection = db
+    .prepare("SELECT suggestion FROM reflections ORDER BY id DESC LIMIT 1")
+    .get() as { suggestion?: string } | undefined;
+
+  return {
+    priorities,
+    focusBlocks,
+    quickTasks,
+    learningEntries,
+    prompts,
+    tags: [...new Set(prompts.flatMap((prompt) => prompt.tags))].sort(),
+    weeklyTrend,
+    summary: {
+      completedPriorities,
+      completedToday: completedPriorities + completedFocusBlocks + completedQuickTasks,
+      learningMinutesWeek,
+      streakDays,
+      momentumScore: Math.min(
+        100,
+        Math.round(
+          ((completedPriorities / Math.max(priorities.length, 1)) * 45 +
+            (completedFocusBlocks / Math.max(focusBlocks.length, 1)) * 25 +
+            (completedQuickTasks / Math.max(quickTasks.length, 1)) * 15 +
+            Math.min(learningMinutesWeek, 90) * 0.17)
+        )
+      ),
+      nextReviewCue:
+        latestReflection?.suggestion ??
+        "Protect one deep block before noon and close with a five-minute review.",
+      learningConfidenceAverage: Number.isFinite(confidenceAverage) ? Number(confidenceAverage.toFixed(1)) : 0
+    }
+  };
+}
+
+export function addPriority(input: { title: string; detail: string }) {
+  const rank = (
+    db.prepare("SELECT COALESCE(MAX(rank), 0) as maxRank FROM priorities").get() as { maxRank: number }
+  ).maxRank + 1;
+  db.prepare("INSERT INTO priorities (title, detail, status, rank, created_at) VALUES (?, ?, 'active', ?, ?)")
+    .run(input.title, input.detail, Math.min(rank, 3), dayKey(new Date()));
+}
+
+export function togglePriority(id: number) {
+  db.prepare(
+    "UPDATE priorities SET status = CASE WHEN status = 'done' THEN 'active' ELSE 'done' END WHERE id = ?"
+  ).run(id);
+}
+
+export function addQuickTask(input: { title: string }) {
+  db.prepare("INSERT INTO quick_tasks (title, status, created_at) VALUES (?, 'active', ?)").run(
+    input.title,
+    dayKey(new Date())
+  );
+}
+
+export function toggleQuickTask(id: number) {
+  db.prepare(
+    "UPDATE quick_tasks SET status = CASE WHEN status = 'done' THEN 'active' ELSE 'done' END WHERE id = ?"
+  ).run(id);
+}
+
+export function addFocusBlock(input: {
+  label: string;
+  startTime: string;
+  endTime: string;
+  intensity: string;
+}) {
+  db.prepare(
+    "INSERT INTO focus_blocks (label, start_time, end_time, intensity, status, created_at) VALUES (?, ?, ?, ?, 'active', ?)"
+  ).run(input.label, input.startTime, input.endTime, input.intensity, dayKey(new Date()));
+}
+
+export function toggleFocusBlock(id: number) {
+  db.prepare(
+    "UPDATE focus_blocks SET status = CASE WHEN status = 'done' THEN 'active' ELSE 'done' END WHERE id = ?"
+  ).run(id);
+}
+
+export function addLearningEntry(input: {
+  topic: string;
+  minutes: number;
+  notes: string;
+  confidence: number;
+  nextAction: string;
+}) {
+  db.prepare(
+    "INSERT INTO learning_entries (topic, minutes, notes, confidence, next_action, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+  ).run(input.topic, input.minutes, input.notes, input.confidence, input.nextAction, dayKey(new Date()));
+}
+
+export function saveReflection(input: {
+  energyWin: string;
+  learningEdge: string;
+  familyNote: string;
+}) {
+  const dashboard = getDashboardData();
+  const suggestion = buildNextDaySuggestion({
+    energyWin: input.energyWin,
+    learningEdge: input.learningEdge,
+    familyNote: input.familyNote,
+    outstandingPriorities: dashboard.priorities.filter((item) => item.status !== "done").length,
+    learningConfidenceAverage: dashboard.summary.learningConfidenceAverage
+  });
+
+  db.prepare(
+    "INSERT INTO reflections (energy_win, learning_edge, family_note, suggestion, created_at) VALUES (?, ?, ?, ?, ?)"
+  ).run(input.energyWin, input.learningEdge, input.familyNote, suggestion, dayKey(new Date()));
+
+  return suggestion;
+}

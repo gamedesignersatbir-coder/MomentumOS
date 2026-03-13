@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+:root {
+  --background: #08111f;
+  --foreground: #eef4ff;
+  --muted: #96a8c7;
+  --panel: rgba(9, 20, 38, 0.78);
+  --panel-strong: rgba(7, 14, 28, 0.94);
+  --border: rgba(157, 189, 255, 0.16);
+  --border-strong: rgba(157, 189, 255, 0.28);
+  --primary: #7ce1ff;
+  --primary-strong: #45a4ff;
+  --accent: #ffd479;
+  --success: #7bf1a8;
+  --danger: #ff8f8f;
+  --shadow: 0 24px 80px rgba(4, 10, 22, 0.45);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(69, 164, 255, 0.22), transparent 28%),
+    radial-gradient(circle at top right, rgba(255, 212, 121, 0.18), transparent 20%),
+    linear-gradient(180deg, #0b1730 0%, #08111f 42%, #050b14 100%);
+  color: var(--foreground);
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.app-shell {
+  position: relative;
+  overflow-x: hidden;
+}
+
+.app-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(148, 175, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 175, 255, 0.045) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(180deg, rgba(255, 255, 255, 0.85), transparent 86%);
+}
+
+.glass {
+  background: linear-gradient(180deg, rgba(12, 22, 40, 0.92), rgba(7, 15, 29, 0.88));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.subtle-panel {
+  background: var(--panel);
+  border: 1px solid rgba(157, 189, 255, 0.1);
+}
+
+.text-dim {
+  color: var(--muted);
+}
+
+.section-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.hero-chip {
+  border: 1px solid rgba(124, 225, 255, 0.22);
+  background: rgba(124, 225, 255, 0.08);
+}
+
+.animate-rise {
+  animation: rise 0.5s ease-out;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
