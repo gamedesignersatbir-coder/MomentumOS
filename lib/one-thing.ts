@@ -37,7 +37,7 @@ export function getOneThing(
 
   // Afternoon mode: intensity-first sort (Steady=0, Light=1, Deep=2, null=3)
   if (mode === 'afternoon') {
-    const intensityOrder = { Steady: 0, Light: 1, Deep: 2 };
+    const intensityOrder: Record<string, number> = { Steady: 0, Light: 1, Deep: 2 };
     return candidates.sort((a, b) => {
       const ia = intensityOrder[a.intensity ?? ''] ?? 3;
       const ib = intensityOrder[b.intensity ?? ''] ?? 3;
