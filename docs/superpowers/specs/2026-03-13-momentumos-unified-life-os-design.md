@@ -124,18 +124,52 @@ A structured curriculum the user can also talk to. AI builds the path, user walk
 
 ### Module 3: Pulse Feed
 
-Real-time news on gaming, AI, and tech, converted from passive reading into fuel.
+Real-time news on gaming, AI, and tech — converted from passive reading into fuel. Source is the existing PulseFeed project (github.com/gamedesignersatbir-coder/pulse-feed), whose parsers and API integrations we reuse. The UI and data logic are redesigned.
 
-**Source:** The local Pulse Feed version on Satbir's Windows machine. This must be located and evaluated before Phase 3 begins (see Phase 0 task). If the local version cannot be located or adapted, fallback: build a minimal RSS aggregator consuming curated feeds (e.g. AI news from The Verge AI, Hacker News AI filter, Game Developer, GamesIndustry.biz).
+**The core design shift: articles → stories**
+PulseFeed currently fetches 500+ items and dumps them on screen. The integrated version shows a maximum of 20 *stories* — each story groups multiple articles covering the same event into one card. One headline, source count ("covered by 4 sources"), one AI summary. Expand to see individual sources. Eliminates overwhelm without losing coverage.
+
+**What we keep from PulseFeed:**
+- All source parsers: RSS (18 outlets), Reddit (10 subs), Hacker News, Bluesky, GitHub trending, Steam
+- OpenRouter summarization logic (Claude Haiku)
+- Bookmark system (maps to save action)
+
+**What we redesign:**
+- UI entirely — single column, story cards, no drama meter, no breaking ticker
+- Volume cap — hard limit of 20 stories; AI picks the most relevant to Satbir's domains
+- Story clustering — group articles by title similarity (building on existing Jaccard logic)
+- Filtering — by domain (AI / gaming / game design / tech), not checkboxes
+- Time decay — stories older than 48h rank lower regardless of engagement
+
+**Sources to add (currently missing):**
+- Game Developer (gamedeveloper.com) — industry-level game design
+- 80 Level (80.lv) — art, design, game dev deep-dives
+- Hugging Face Blog — AI research and model releases
+- Simon Willison's Blog (simonwillison.net) — serious AI practitioner writing
+- The Decoder (the-decoder.com) — quality AI news without hype
+
+**Remove entirely:** drama scoring, breaking news ticker, source toggle checkboxes
 
 **News-to-action bridge:**
-- After reading an article (or while hovering), a small action bar appears: "Does this spark something?"
-- Three options: **Learning note** (opens a quick note form prefilled with article title + URL, attached to the relevant learning curriculum) / **Game design idea** (creates a Quick Task tagged `game-design-idea`) / **Bookmark** (saves to a simple bookmarks list)
-- This is a one-tap interaction: tap the category, done. No form to fill unless the user wants to add a note.
+- On each story card: "Does this spark something?"
+- Three options: **Learning note** (prefilled with story title + URL, attached to relevant curriculum) / **Game design idea** (creates a Quick Task tagged `game-design-idea`) / **Bookmark**
+- One tap, no form unless user wants to add a note.
+
+**Contextual relevance:**
+- Stories matching active learning module topics surface higher
+- Tag/keyword matching against current tasks and curriculum — not ML
 
 **Connection surfacing:**
-- Logic: if ≥5 saved items share a common tag or domain (e.g. "procedural generation"), surface a suggestion: *"You've saved 5 items on procedural generation. Want to add it to your learning curriculum?"*
-- This is a simple tag-count check, not AI/embedding. Implemented in Phase 3.
+- If ≥5 saved items share a domain/tag: *"You've saved 5 items on procedural generation. Add to your learning curriculum?"*
+- Simple tag-count check.
+
+**Schema:**
+```sql
+pulse_stories (id, headline, summary, article_ids_json, domain, tags_json,
+               source_count, fetched_at, relevance_score)
+pulse_articles (id, title, url, domain, tags_json, summary, published_at, fetched_at)
+pulse_saves (id, story_id, article_id, save_type, note, tags_json, created_at)
+```
 
 **Time-aware surfacing:** follows the schedule in Section 5.
 
@@ -323,9 +357,7 @@ Existing tables remain unchanged. Migration scripts added per phase.
 *Goal: working baseline deployed to Mac Mini; Pulse Feed source resolved*
 - Deploy existing MomentumOS codebase to Mac Mini with PM2
 - Set up Tailscale; verify app is accessible from at least one other device
-- Locate and evaluate the local Pulse Feed project
-- If found: document its data format and integration surface
-- If not found: identify 3–4 RSS feeds covering AI/gaming/tech as fallback
+- ✅ Pulse Feed located: github.com/gamedesignersatbir-coder/pulse-feed — fully analysed. Parsers and OpenRouter summarization reused. UI and data logic redesigned (articles→stories, 20-item cap, drama scoring removed). See Module 3 spec.
 - Write the initial 40 greeting messages (creative task — can be done in parallel)
 - *Deliverable: app running on Mac Mini, Pulse Feed path decided, greeting copy ready*
 
