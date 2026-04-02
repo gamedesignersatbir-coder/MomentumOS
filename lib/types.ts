@@ -5,6 +5,8 @@ export type DashboardData = {
     detail: string;
     status: string;
     rank: number;
+    intensity?: string | null;
+    updated_at?: string;
   }>;
   focusBlocks: Array<{
     id: number;
@@ -49,3 +51,18 @@ export type DashboardData = {
     learningConfidenceAverage: number;
   };
 };
+
+export interface UserProfile {
+  id: number;
+  display_name: string;
+  timezone: string;
+  sadhana_morning_end: number;
+  sadhana_afternoon_start: number;
+  sadhana_afternoon_end: number;
+  work_start: number;
+  work_end: number;
+  domains_json: string;
+  about_me: string;
+  created_at: string;
+  updated_at: string;
+}

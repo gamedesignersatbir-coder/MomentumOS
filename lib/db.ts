@@ -4,7 +4,7 @@ import path from "node:path";
 import { format, subDays } from "date-fns";
 
 import { buildNextDaySuggestion } from "@/lib/reflection";
-import type { DashboardData } from "@/lib/types";
+import type { DashboardData, UserProfile } from "@/lib/types";
 
 const databasePath = path.join(process.cwd(), "momentum-os.db");
 
@@ -36,7 +36,9 @@ function initializeDatabase(database: DatabaseSync) {
       detail TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'active',
       rank INTEGER NOT NULL,
-      created_at TEXT NOT NULL
+      intensity TEXT CHECK(intensity IN ('Deep','Steady','Light')) DEFAULT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS focus_blocks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,6 +79,30 @@ function initializeDatabase(database: DatabaseSync) {
       suggestion TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS user_profile (
+      id INTEGER PRIMARY KEY,
+      display_name TEXT NOT NULL DEFAULT 'Satbir',
+      timezone TEXT NOT NULL DEFAULT 'Asia/Kolkata',
+      sadhana_morning_end INTEGER NOT NULL DEFAULT 480,
+      sadhana_afternoon_start INTEGER NOT NULL DEFAULT 840,
+      sadhana_afternoon_end INTEGER NOT NULL DEFAULT 900,
+      work_start INTEGER NOT NULL DEFAULT 480,
+      work_end INTEGER NOT NULL DEFAULT 1110,
+      domains_json TEXT NOT NULL DEFAULT '["AI","game design","gaming","tech"]',
+      about_me TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS greeting_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id TEXT NOT NULL,
+      shown_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TRIGGER IF NOT EXISTS priorities_updated_at
+    AFTER UPDATE ON priorities
+    BEGIN
+      UPDATE priorities SET updated_at = datetime('now') WHERE id = NEW.id;
+    END;
   `);
 }
 
@@ -88,6 +114,17 @@ function seedIfNeeded() {
   const existing = db.prepare("SELECT COUNT(*) as count FROM priorities").get() as { count: number };
   if (existing.count > 0) {
     return;
+  }
+
+  // Seed default profile if none exists
+  const profileCount = db.prepare(
+    'SELECT COUNT(*) as count FROM user_profile'
+  ).get() as { count: number };
+  if (profileCount.count === 0) {
+    db.prepare(`
+      INSERT INTO user_profile (id, display_name, timezone, about_me)
+      VALUES (1, 'Satbir', 'Asia/Kolkata', 'Game designer. Meditator. Curious about AI and game design.')
+    `).run();
   }
 
   const priorities = [
@@ -190,7 +227,7 @@ function seedIfNeeded() {
 
 export function getDashboardData(): DashboardData {
   const priorities = toPlainObject(
-    db.prepare("SELECT id, title, detail, status, rank FROM priorities ORDER BY rank ASC, id ASC LIMIT 3").all()
+    db.prepare("SELECT id, title, detail, status, rank, intensity, updated_at FROM priorities ORDER BY rank ASC, id ASC").all()
   ) as DashboardData["priorities"];
   const focusBlocks = toPlainObject(
     db
@@ -200,7 +237,7 @@ export function getDashboardData(): DashboardData {
       .all()
   ) as DashboardData["focusBlocks"];
   const quickTasks = toPlainObject(
-    db.prepare("SELECT id, title, status FROM quick_tasks ORDER BY id DESC LIMIT 8").all()
+    db.prepare("SELECT id, title, status FROM quick_tasks ORDER BY id DESC").all()
   ) as DashboardData["quickTasks"];
   const learningEntries = toPlainObject(
     db
@@ -336,6 +373,21 @@ export function toggleQuickTask(id: number) {
   ).run(id);
 }
 
+export function addQuickTaskInbox(title: string): void {
+  db.prepare(
+    "INSERT INTO quick_tasks (title, status, created_at) VALUES (?, 'inbox', ?)"
+  ).run(title, dayKey(new Date()));
+}
+
+export function deferTask(id: number, type: 'priority' | 'quick_task'): void {
+  // Runtime guard — table name cannot be parameterised in SQLite.
+  if (type !== 'priority' && type !== 'quick_task') {
+    throw new Error(`deferTask: invalid type "${type}"`);
+  }
+  const table = type === 'priority' ? 'priorities' : 'quick_tasks';
+  db.prepare(`UPDATE ${table} SET status = 'deferred' WHERE id = ?`).run(id);
+}
+
 export function addFocusBlock(input: {
   label: string;
   startTime: string;
@@ -384,4 +436,57 @@ export function saveReflection(input: {
   ).run(input.energyWin, input.learningEdge, input.familyNote, suggestion, dayKey(new Date()));
 
   return suggestion;
+}
+
+// --- User Profile ---
+
+export function getUserProfile(): UserProfile | null {
+  const row = db
+    .prepare('SELECT * FROM user_profile WHERE id = 1')
+    .get() as UserProfile | null;
+  return row ? toPlainObject(row) : null;
+}
+
+export function updateUserProfile(updates: Partial<Omit<UserProfile, 'id' | 'created_at'>>): void {
+  const fields = Object.keys(updates)
+    .map((k) => `${k} = ?`)
+    .join(', ');
+  const values = [...Object.values(updates), new Date().toISOString()];
+  db.prepare(
+    `UPDATE user_profile SET ${fields}, updated_at = ? WHERE id = 1`
+  ).run(...values);
+}
+
+// --- Soft Close helpers ---
+
+export function archivePriority(id: number): void {
+  db.prepare("UPDATE priorities SET status = 'done' WHERE id = ?").run(id);
+}
+
+export function seedTomorrowPriority(title: string): void {
+  db.prepare(
+    `UPDATE priorities SET rank = rank + 1 WHERE status = 'active'`
+  ).run();
+  db.prepare(`
+    INSERT INTO priorities (title, detail, status, rank, created_at)
+    VALUES (?, '', 'active', 1, ?)
+  `).run(title.trim(), dayKey(new Date()));
+}
+
+// --- Greeting History ---
+
+export function getRecentGreetingIds(withinDays = 30): string[] {
+  const cutoff = new Date(Date.now() - withinDays * 86400 * 1000).toISOString();
+  const rows = db
+    .prepare(
+      'SELECT message_id FROM greeting_history WHERE shown_at > ? ORDER BY shown_at DESC'
+    )
+    .all(cutoff) as { message_id: string }[];
+  return rows.map((r) => r.message_id);
+}
+
+export function recordGreetingShown(messageId: string): void {
+  db.prepare(
+    'INSERT INTO greeting_history (message_id) VALUES (?)'
+  ).run(messageId);
 }

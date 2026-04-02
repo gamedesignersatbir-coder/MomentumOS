@@ -21,11 +21,13 @@ import {
   addLearningEntryAction,
   addPriorityAction,
   addQuickTaskAction,
+  recordGreetingAction,
   saveReflectionAction,
   toggleFocusBlockAction,
   togglePriorityAction,
   toggleQuickTaskAction
 } from "@/app/actions";
+import { SoftCloseModal } from './soft-close-modal';
 import { useToast } from "@/components/toaster";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,8 +36,21 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { format } from "date-fns";
+
 import { cx } from "@/lib/utils";
-import type { DashboardData } from "@/lib/types";
+import type { TimeMode } from "@/lib/time-mode";
+import { isQuietMode } from "@/lib/time-mode";
+import type { GreetingMessage } from "@/lib/greetings-library";
+import type { DashboardData, UserProfile } from "@/lib/types";
+import { getOneThing } from "@/lib/one-thing";
+import type { Priority } from "@/lib/one-thing";
+import { GreetingBar } from "./greeting-bar";
+import { OneThingCard } from "./one-thing-card";
+import { QuickCapture } from "./quick-capture";
+import { QuietMode } from "./quiet-mode";
+import { StuckOverlay } from "./stuck-overlay";
+import { TriageModal } from "./triage-modal";
 
 const completionTone = ["bg-rose-300/70", "bg-amber-300/70", "bg-cyan-300/70", "bg-emerald-300/70"];
 
@@ -43,13 +58,20 @@ async function copyToClipboard(value: string) {
   await navigator.clipboard.writeText(value);
 }
 
+interface Props {
+  data: DashboardData;
+  greeting: GreetingMessage;
+  currentMode: TimeMode;
+  userProfile: UserProfile | null;
+}
+
 export function MomentumDashboard({
   data,
-  todayLabel
-}: {
-  data: DashboardData;
-  todayLabel: string;
-}) {
+  greeting,
+  currentMode,
+  userProfile: _userProfile,
+}: Props) {
+  const todayLabel = format(new Date(), "EEEE, MMM d");
   const router = useRouter();
   const { pushToast } = useToast();
   const [isReflectionOpen, setIsReflectionOpen] = useState(false);
@@ -57,6 +79,17 @@ export function MomentumDashboard({
   const [isPending, startTransition] = useTransition();
   const searchRef = useRef<HTMLInputElement>(null);
   const [promptQuery, setPromptQuery] = useState("");
+  const [dismissedUntil, setDismissedUntil] = useState<number | null>(null);
+  const [triageOpen, setTriageOpen] = useState(false);
+  const [softCloseOpen, setSoftCloseOpen] = useState(false);
+  const [softCloseShownThisSession, setSoftCloseShownThisSession] = useState(false);
+  const [showAllPriorities, setShowAllPriorities] = useState(false);
+  const oneThing = getOneThing(data.priorities as Priority[], currentMode);
+
+  const totalActive =
+    data.priorities.filter((p) => p.status === 'active').length +
+    data.quickTasks.filter((t) => t.status === 'active').length;
+  const isOverloaded = totalActive > 8;
 
   const filteredPrompts = useMemo(() => {
     const query = promptQuery.toLowerCase();
@@ -65,6 +98,16 @@ export function MomentumDashboard({
       return haystack.includes(query);
     });
   }, [data.prompts, promptQuery]);
+
+  useEffect(() => {
+    if (currentMode === 'reflection' && !softCloseShownThisSession) {
+      const t = setTimeout(() => {
+        setSoftCloseOpen(true);
+        setSoftCloseShownThisSession(true);
+      }, 2000);
+      return () => clearTimeout(t);
+    }
+  }, [currentMode, softCloseShownThisSession]);
 
   function runAction<T>(work: () => Promise<T>, message?: string) {
     startTransition(async () => {
@@ -86,8 +129,36 @@ export function MomentumDashboard({
     });
   }
 
+  if (isQuietMode(currentMode)) {
+    return <QuietMode greeting={greeting} />;
+  }
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+    <main className="page-wrapper">
+      <GreetingBar initialGreeting={greeting} onShown={recordGreetingAction} />
+      <OneThingCard
+        priority={oneThing}
+        onComplete={(id) => {
+          runAction(() => togglePriorityAction(id));
+        }}
+        onDismiss={() => setDismissedUntil(Date.now() + 60 * 60 * 1000)}
+        dismissedUntil={dismissedUntil}
+      />
+      {isOverloaded && !triageOpen && (
+        <div className="overload-prompt">
+          <span>Things are getting full —</span>
+          <button className="btn-link" onClick={() => setTriageOpen(true)}>
+            quick triage?
+          </button>
+        </div>
+      )}
+      {triageOpen && (
+        <TriageModal
+          priorities={data.priorities as Priority[]}
+          quickTasks={data.quickTasks}
+          onClose={() => setTriageOpen(false)}
+        />
+      )}
       <section className="glass animate-rise rounded-[32px] p-5 sm:p-8">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.95fr)] lg:items-center">
           <div className="min-w-0 space-y-4">
@@ -130,6 +201,7 @@ export function MomentumDashboard({
 
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
         <section className="section-grid">
+          <div id="priorities-section">
           <Card className="rounded-[28px] p-5 sm:p-6">
             <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -163,33 +235,44 @@ export function MomentumDashboard({
 
                 <div className="grid gap-3">
                   {data.priorities.length ? (
-                    data.priorities.map((priority) => (
-                      <button
-                        key={priority.id}
-                        type="button"
-                        onClick={() => runAction(() => togglePriorityAction(priority.id))}
-                        className={cx(
-                          "text-left rounded-3xl border p-4 transition hover:border-cyan-200/40",
-                          priority.status === "done"
-                            ? "border-emerald-300/30 bg-emerald-300/10"
-                            : "border-white/10 bg-white/[0.03]"
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.22em] text-dim">Priority {priority.rank}</p>
-                            <h3 className="mt-1 text-lg font-semibold">{priority.title}</h3>
-                            <p className="mt-2 text-sm text-slate-300/80">{priority.detail}</p>
+                    <>
+                      {(showAllPriorities ? data.priorities : data.priorities.slice(0, 3)).map((priority) => (
+                        <button
+                          key={priority.id}
+                          type="button"
+                          onClick={() => runAction(() => togglePriorityAction(priority.id))}
+                          className={cx(
+                            "text-left rounded-3xl border p-4 transition hover:border-cyan-200/40",
+                            priority.status === "done"
+                              ? "border-emerald-300/30 bg-emerald-300/10"
+                              : "border-white/10 bg-white/[0.03]"
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.22em] text-dim">Priority {priority.rank}</p>
+                              <h3 className="mt-1 text-lg font-semibold">{priority.title}</h3>
+                              <p className="mt-2 text-sm text-slate-300/80">{priority.detail}</p>
+                            </div>
+                            <CheckCircle2
+                              className={cx(
+                                "mt-1 h-5 w-5",
+                                priority.status === "done" ? "text-emerald-300" : "text-slate-500"
+                              )}
+                            />
                           </div>
-                          <CheckCircle2
-                            className={cx(
-                              "mt-1 h-5 w-5",
-                              priority.status === "done" ? "text-emerald-300" : "text-slate-500"
-                            )}
-                          />
-                        </div>
-                      </button>
-                    ))
+                        </button>
+                      ))}
+                      {!showAllPriorities && data.priorities.length > 3 && (
+                        <button
+                          type="button"
+                          className="btn-ghost btn-small"
+                          onClick={() => setShowAllPriorities(true)}
+                        >
+                          and {data.priorities.length - 3} more...
+                        </button>
+                      )}
+                    </>
                   ) : (
                     <EmptyState title="No priorities yet" description="Add up to three priority outcomes for the day." />
                   )}
@@ -299,6 +382,7 @@ export function MomentumDashboard({
               </div>
             </div>
           </Card>
+          </div>
 
           <Card className="rounded-[28px] p-5 sm:p-6">
             <div className="mb-5 flex items-center gap-2">
@@ -522,6 +606,34 @@ export function MomentumDashboard({
         onOpenReflection={() => setIsReflectionOpen(true)}
         onFocusSearch={() => searchRef.current?.focus()}
       />
+      {(currentMode === 'reflection' || currentMode === 'evening') && (
+        <button
+          className="btn-ghost soft-close-trigger"
+          onClick={() => setSoftCloseOpen(true)}
+        >
+          Close the day
+        </button>
+      )}
+      {softCloseOpen && (
+        <SoftCloseModal
+          priorities={data.priorities as Priority[]}
+          onClose={() => setSoftCloseOpen(false)}
+        />
+      )}
+      <QuickCapture />
+      {!isQuietMode(currentMode) && currentMode !== 'reflection' && (
+        <StuckOverlay
+          oneThing={oneThing}
+          onStart={(id) => {
+            setDismissedUntil(null);
+          }}
+          onShowAll={() => {
+            document
+              .getElementById('priorities-section')
+              ?.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
+      )}
     </main>
   );
 }
@@ -556,3 +668,5 @@ function KeyboardShortcuts({
 
   return null;
 }
+
+export default MomentumDashboard;

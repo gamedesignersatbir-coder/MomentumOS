@@ -8,7 +8,12 @@ import {
   addLearningEntry,
   addPriority,
   addQuickTask,
+  addQuickTaskInbox,
+  archivePriority,
+  deferTask,
+  recordGreetingShown,
   saveReflection,
+  seedTomorrowPriority,
   toggleFocusBlock,
   togglePriority,
   toggleQuickTask
@@ -117,4 +122,58 @@ export async function saveReflectionAction(formData: FormData) {
   const suggestion = saveReflection(input);
   revalidatePath("/");
   return { ok: true, message: "Reflection captured.", suggestion };
+}
+
+export async function recordGreetingAction(messageId: string): Promise<void> {
+  recordGreetingShown(messageId);
+}
+
+export async function quickCaptureAction(title: string): Promise<void> {
+  const parsed = z.string().min(1).max(200).safeParse(title);
+  if (!parsed.success) return;
+  // Insert with status='inbox' — inbox items require explicit triage/promotion
+  addQuickTaskInbox(parsed.data);
+  revalidatePath('/');
+}
+
+export async function deferTaskAction(
+  id: number,
+  type: 'priority' | 'quick_task'
+): Promise<void> {
+  deferTask(id, type);
+  revalidatePath('/');
+}
+
+export async function softCloseAction(formData: {
+  deferIds: number[];
+  archiveIds: number[];
+  tomorrowSeed: string;
+}): Promise<void> {
+  const schema = z.object({
+    deferIds: z.array(z.number()),
+    archiveIds: z.array(z.number()),
+    tomorrowSeed: z.string().max(200),
+  });
+  const parsed = schema.safeParse(formData);
+  if (!parsed.success) return;
+
+  const { deferIds, archiveIds, tomorrowSeed } = parsed.data;
+
+  // Defer selected priorities
+  for (const id of deferIds) {
+    deferTask(id, 'priority');
+  }
+
+  // Archive selected priorities (set status = 'done')
+  for (const id of archiveIds) {
+    archivePriority(id);
+  }
+
+  // Seed tomorrow's top priority if provided.
+  // Increment all existing active priority ranks first so the seed lands at rank 1.
+  if (tomorrowSeed.trim()) {
+    seedTomorrowPriority(tomorrowSeed.trim());
+  }
+
+  revalidatePath('/');
 }
