@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { z, type ZodError } from "zod";
 
 import {
   addFocusBlock,
@@ -53,12 +53,29 @@ function field<K extends string>(formData: FormData, key: K) {
   return String(formData.get(key) ?? "");
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  title: "Title", label: "Label", topic: "Topic", notes: "Notes",
+  nextAction: "Next action", energyWin: "Energy win",
+  learningEdge: "Learning edge", familyNote: "Family note",
+  minutes: "Minutes", startTime: "Start time", endTime: "End time",
+};
+
+function friendlyError(err: ZodError): string {
+  const issue = err.issues[0];
+  const fieldKey = String(issue.path[0] ?? "");
+  const name = FIELD_LABELS[fieldKey] ?? (fieldKey || "Input");
+  if (issue.code === "too_small") return `${name} can't be blank.`;
+  if (issue.code === "too_big") return `${name} is too long.`;
+  return `${name}: ${issue.message}`;
+}
+
 export async function addPriorityAction(formData: FormData) {
-  const input = prioritySchema.parse({
+  const result = prioritySchema.safeParse({
     title: field(formData, "title"),
     detail: field(formData, "detail")
   });
-  addPriority(input);
+  if (!result.success) return { ok: false, message: friendlyError(result.error) };
+  addPriority(result.data);
   revalidatePath("/");
   return { ok: true, message: "Priority added." };
 }
@@ -70,8 +87,9 @@ export async function togglePriorityAction(id: number) {
 }
 
 export async function addQuickTaskAction(formData: FormData) {
-  const input = quickTaskSchema.parse({ title: field(formData, "title") });
-  addQuickTask(input);
+  const result = quickTaskSchema.safeParse({ title: field(formData, "title") });
+  if (!result.success) return { ok: false, message: friendlyError(result.error) };
+  addQuickTask(result.data);
   revalidatePath("/");
   return { ok: true, message: "Quick task captured." };
 }
@@ -83,13 +101,14 @@ export async function toggleQuickTaskAction(id: number) {
 }
 
 export async function addFocusBlockAction(formData: FormData) {
-  const input = focusBlockSchema.parse({
+  const result = focusBlockSchema.safeParse({
     label: field(formData, "label"),
     startTime: field(formData, "startTime"),
     endTime: field(formData, "endTime"),
     intensity: field(formData, "intensity")
   });
-  addFocusBlock(input);
+  if (!result.success) return { ok: false, message: friendlyError(result.error) };
+  addFocusBlock(result.data);
   revalidatePath("/");
   return { ok: true, message: "Focus block scheduled." };
 }
@@ -101,25 +120,27 @@ export async function toggleFocusBlockAction(id: number) {
 }
 
 export async function addLearningEntryAction(formData: FormData) {
-  const input = learningSchema.parse({
+  const result = learningSchema.safeParse({
     topic: field(formData, "topic"),
     minutes: field(formData, "minutes"),
     notes: field(formData, "notes"),
     confidence: field(formData, "confidence"),
     nextAction: field(formData, "nextAction")
   });
-  addLearningEntry(input);
+  if (!result.success) return { ok: false, message: friendlyError(result.error) };
+  addLearningEntry(result.data);
   revalidatePath("/");
   return { ok: true, message: "Learning sprint saved." };
 }
 
 export async function saveReflectionAction(formData: FormData) {
-  const input = reflectionSchema.parse({
+  const result = reflectionSchema.safeParse({
     energyWin: field(formData, "energyWin"),
     learningEdge: field(formData, "learningEdge"),
     familyNote: field(formData, "familyNote")
   });
-  const suggestion = saveReflection(input);
+  if (!result.success) return { ok: false, message: friendlyError(result.error) };
+  const suggestion = saveReflection(result.data);
   revalidatePath("/");
   return { ok: true, message: "Reflection captured.", suggestion };
 }

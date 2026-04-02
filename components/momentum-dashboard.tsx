@@ -112,7 +112,11 @@ export function MomentumDashboard({
   function runAction<T>(work: () => Promise<T>, message?: string) {
     startTransition(async () => {
       try {
-        const result = (await work()) as { message?: string; suggestion?: string };
+        const result = (await work()) as { ok?: boolean; message?: string; suggestion?: string };
+        if (result.ok === false) {
+          pushToast({ title: result.message ?? "Please check your input.", tone: "error" });
+          return;
+        }
         if (message || result.message) {
           pushToast({ title: message ?? result.message ?? "Saved" });
         }
