@@ -21,6 +21,7 @@ import {
   addLearningEntryAction,
   addPriorityAction,
   addQuickTaskAction,
+  recordGreetingAction,
   saveReflectionAction,
   toggleFocusBlockAction,
   togglePriorityAction,
@@ -40,6 +41,7 @@ import { cx } from "@/lib/utils";
 import type { TimeMode } from "@/lib/time-mode";
 import type { GreetingMessage } from "@/lib/greetings-library";
 import type { DashboardData, UserProfile } from "@/lib/types";
+import { GreetingBar } from "./greeting-bar";
 
 const completionTone = ["bg-rose-300/70", "bg-amber-300/70", "bg-cyan-300/70", "bg-emerald-300/70"];
 
@@ -56,7 +58,7 @@ interface Props {
 
 export function MomentumDashboard({
   data,
-  greeting: _greeting,
+  greeting,
   currentMode: _currentMode,
   userProfile: _userProfile,
 }: Props) {
@@ -99,6 +101,7 @@ export function MomentumDashboard({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+      <GreetingBar initialGreeting={greeting} onShown={recordGreetingAction} />
       <section className="glass animate-rise rounded-[32px] p-5 sm:p-8">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.95fr)] lg:items-center">
           <div className="min-w-0 space-y-4">
