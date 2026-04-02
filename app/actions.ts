@@ -8,6 +8,8 @@ import {
   addLearningEntry,
   addPriority,
   addQuickTask,
+  addQuickTaskInbox,
+  deferTask,
   recordGreetingShown,
   saveReflection,
   toggleFocusBlock,
@@ -122,4 +124,20 @@ export async function saveReflectionAction(formData: FormData) {
 
 export async function recordGreetingAction(messageId: string): Promise<void> {
   recordGreetingShown(messageId);
+}
+
+export async function quickCaptureAction(title: string): Promise<void> {
+  const parsed = z.string().min(1).max(200).safeParse(title);
+  if (!parsed.success) return;
+  // Insert with status='inbox' — inbox items require explicit triage/promotion
+  addQuickTaskInbox(parsed.data);
+  revalidatePath('/');
+}
+
+export async function deferTaskAction(
+  id: number,
+  type: 'priority' | 'quick_task'
+): Promise<void> {
+  deferTask(id, type);
+  revalidatePath('/');
 }

@@ -373,6 +373,21 @@ export function toggleQuickTask(id: number) {
   ).run(id);
 }
 
+export function addQuickTaskInbox(title: string): void {
+  db.prepare(
+    "INSERT INTO quick_tasks (title, status, created_at) VALUES (?, 'inbox', ?)"
+  ).run(title, dayKey(new Date()));
+}
+
+export function deferTask(id: number, type: 'priority' | 'quick_task'): void {
+  // Runtime guard — table name cannot be parameterised in SQLite.
+  if (type !== 'priority' && type !== 'quick_task') {
+    throw new Error(`deferTask: invalid type "${type}"`);
+  }
+  const table = type === 'priority' ? 'priorities' : 'quick_tasks';
+  db.prepare(`UPDATE ${table} SET status = 'deferred' WHERE id = ?`).run(id);
+}
+
 export function addFocusBlock(input: {
   label: string;
   startTime: string;
