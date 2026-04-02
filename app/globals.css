@@ -404,9 +404,9 @@ select:focus-visible {
 /* --- Soft close trigger --- */
 .soft-close-trigger { margin-top: var(--space-6); }
 
-/* --- Page wrapper (single-column layout) --- */
+/* --- Page wrapper (responsive layout) --- */
 .page-wrapper {
-  max-width: 720px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: var(--space-8) var(--space-6);
 }
