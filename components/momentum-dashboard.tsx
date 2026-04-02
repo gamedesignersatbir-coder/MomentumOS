@@ -83,6 +83,7 @@ export function MomentumDashboard({
   const [triageOpen, setTriageOpen] = useState(false);
   const [softCloseOpen, setSoftCloseOpen] = useState(false);
   const [softCloseShownThisSession, setSoftCloseShownThisSession] = useState(false);
+  const [showAllPriorities, setShowAllPriorities] = useState(false);
   const oneThing = getOneThing(data.priorities as Priority[], currentMode);
 
   const totalActive =
@@ -133,7 +134,7 @@ export function MomentumDashboard({
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+    <main className="page-wrapper">
       <GreetingBar initialGreeting={greeting} onShown={recordGreetingAction} />
       <OneThingCard
         priority={oneThing}
@@ -234,33 +235,44 @@ export function MomentumDashboard({
 
                 <div className="grid gap-3">
                   {data.priorities.length ? (
-                    data.priorities.map((priority) => (
-                      <button
-                        key={priority.id}
-                        type="button"
-                        onClick={() => runAction(() => togglePriorityAction(priority.id))}
-                        className={cx(
-                          "text-left rounded-3xl border p-4 transition hover:border-cyan-200/40",
-                          priority.status === "done"
-                            ? "border-emerald-300/30 bg-emerald-300/10"
-                            : "border-white/10 bg-white/[0.03]"
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.22em] text-dim">Priority {priority.rank}</p>
-                            <h3 className="mt-1 text-lg font-semibold">{priority.title}</h3>
-                            <p className="mt-2 text-sm text-slate-300/80">{priority.detail}</p>
+                    <>
+                      {(showAllPriorities ? data.priorities : data.priorities.slice(0, 3)).map((priority) => (
+                        <button
+                          key={priority.id}
+                          type="button"
+                          onClick={() => runAction(() => togglePriorityAction(priority.id))}
+                          className={cx(
+                            "text-left rounded-3xl border p-4 transition hover:border-cyan-200/40",
+                            priority.status === "done"
+                              ? "border-emerald-300/30 bg-emerald-300/10"
+                              : "border-white/10 bg-white/[0.03]"
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.22em] text-dim">Priority {priority.rank}</p>
+                              <h3 className="mt-1 text-lg font-semibold">{priority.title}</h3>
+                              <p className="mt-2 text-sm text-slate-300/80">{priority.detail}</p>
+                            </div>
+                            <CheckCircle2
+                              className={cx(
+                                "mt-1 h-5 w-5",
+                                priority.status === "done" ? "text-emerald-300" : "text-slate-500"
+                              )}
+                            />
                           </div>
-                          <CheckCircle2
-                            className={cx(
-                              "mt-1 h-5 w-5",
-                              priority.status === "done" ? "text-emerald-300" : "text-slate-500"
-                            )}
-                          />
-                        </div>
-                      </button>
-                    ))
+                        </button>
+                      ))}
+                      {!showAllPriorities && data.priorities.length > 3 && (
+                        <button
+                          type="button"
+                          className="btn-ghost btn-small"
+                          onClick={() => setShowAllPriorities(true)}
+                        >
+                          and {data.priorities.length - 3} more...
+                        </button>
+                      )}
+                    </>
                   ) : (
                     <EmptyState title="No priorities yet" description="Add up to three priority outcomes for the day." />
                   )}
