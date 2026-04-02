@@ -9,9 +9,11 @@ import {
   addPriority,
   addQuickTask,
   addQuickTaskInbox,
+  archivePriority,
   deferTask,
   recordGreetingShown,
   saveReflection,
+  seedTomorrowPriority,
   toggleFocusBlock,
   togglePriority,
   toggleQuickTask
@@ -139,5 +141,39 @@ export async function deferTaskAction(
   type: 'priority' | 'quick_task'
 ): Promise<void> {
   deferTask(id, type);
+  revalidatePath('/');
+}
+
+export async function softCloseAction(formData: {
+  deferIds: number[];
+  archiveIds: number[];
+  tomorrowSeed: string;
+}): Promise<void> {
+  const schema = z.object({
+    deferIds: z.array(z.number()),
+    archiveIds: z.array(z.number()),
+    tomorrowSeed: z.string().max(200),
+  });
+  const parsed = schema.safeParse(formData);
+  if (!parsed.success) return;
+
+  const { deferIds, archiveIds, tomorrowSeed } = parsed.data;
+
+  // Defer selected priorities
+  for (const id of deferIds) {
+    deferTask(id, 'priority');
+  }
+
+  // Archive selected priorities (set status = 'done')
+  for (const id of archiveIds) {
+    archivePriority(id);
+  }
+
+  // Seed tomorrow's top priority if provided.
+  // Increment all existing active priority ranks first so the seed lands at rank 1.
+  if (tomorrowSeed.trim()) {
+    seedTomorrowPriority(tomorrowSeed.trim());
+  }
+
   revalidatePath('/');
 }

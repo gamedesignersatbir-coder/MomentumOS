@@ -456,6 +456,22 @@ export function updateUserProfile(updates: Partial<Omit<UserProfile, 'id' | 'cre
   ).run(...values);
 }
 
+// --- Soft Close helpers ---
+
+export function archivePriority(id: number): void {
+  db.prepare("UPDATE priorities SET status = 'done' WHERE id = ?").run(id);
+}
+
+export function seedTomorrowPriority(title: string): void {
+  db.prepare(
+    `UPDATE priorities SET rank = rank + 1 WHERE status = 'active'`
+  ).run();
+  db.prepare(`
+    INSERT INTO priorities (title, detail, status, rank, created_at)
+    VALUES (?, '', 'active', 1, ?)
+  `).run(title.trim(), dayKey(new Date()));
+}
+
 // --- Greeting History ---
 
 export function getRecentGreetingIds(withinDays = 30): string[] {

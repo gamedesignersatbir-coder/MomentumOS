@@ -27,6 +27,7 @@ import {
   togglePriorityAction,
   toggleQuickTaskAction
 } from "@/app/actions";
+import { SoftCloseModal } from './soft-close-modal';
 import { useToast } from "@/components/toaster";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,8 @@ export function MomentumDashboard({
   const [promptQuery, setPromptQuery] = useState("");
   const [dismissedUntil, setDismissedUntil] = useState<number | null>(null);
   const [triageOpen, setTriageOpen] = useState(false);
+  const [softCloseOpen, setSoftCloseOpen] = useState(false);
+  const [softCloseShownThisSession, setSoftCloseShownThisSession] = useState(false);
   const oneThing = getOneThing(data.priorities as Priority[], currentMode);
 
   const totalActive =
@@ -94,6 +97,16 @@ export function MomentumDashboard({
       return haystack.includes(query);
     });
   }, [data.prompts, promptQuery]);
+
+  useEffect(() => {
+    if (currentMode === 'reflection' && !softCloseShownThisSession) {
+      const t = setTimeout(() => {
+        setSoftCloseOpen(true);
+        setSoftCloseShownThisSession(true);
+      }, 2000);
+      return () => clearTimeout(t);
+    }
+  }, [currentMode, softCloseShownThisSession]);
 
   function runAction<T>(work: () => Promise<T>, message?: string) {
     startTransition(async () => {
@@ -581,6 +594,20 @@ export function MomentumDashboard({
         onOpenReflection={() => setIsReflectionOpen(true)}
         onFocusSearch={() => searchRef.current?.focus()}
       />
+      {(currentMode === 'reflection' || currentMode === 'evening') && (
+        <button
+          className="btn-ghost soft-close-trigger"
+          onClick={() => setSoftCloseOpen(true)}
+        >
+          Close the day
+        </button>
+      )}
+      {softCloseOpen && (
+        <SoftCloseModal
+          priorities={data.priorities as Priority[]}
+          onClose={() => setSoftCloseOpen(false)}
+        />
+      )}
       <QuickCapture />
       {!isQuietMode(currentMode) && currentMode !== 'reflection' && (
         <StuckOverlay
