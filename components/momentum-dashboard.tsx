@@ -39,9 +39,11 @@ import { format } from "date-fns";
 
 import { cx } from "@/lib/utils";
 import type { TimeMode } from "@/lib/time-mode";
+import { isQuietMode } from "@/lib/time-mode";
 import type { GreetingMessage } from "@/lib/greetings-library";
 import type { DashboardData, UserProfile } from "@/lib/types";
 import { GreetingBar } from "./greeting-bar";
+import { QuietMode } from "./quiet-mode";
 
 const completionTone = ["bg-rose-300/70", "bg-amber-300/70", "bg-cyan-300/70", "bg-emerald-300/70"];
 
@@ -59,7 +61,7 @@ interface Props {
 export function MomentumDashboard({
   data,
   greeting,
-  currentMode: _currentMode,
+  currentMode,
   userProfile: _userProfile,
 }: Props) {
   const todayLabel = format(new Date(), "EEEE, MMM d");
@@ -97,6 +99,10 @@ export function MomentumDashboard({
         });
       }
     });
+  }
+
+  if (isQuietMode(currentMode)) {
+    return <QuietMode greeting={greeting} />;
   }
 
   return (
