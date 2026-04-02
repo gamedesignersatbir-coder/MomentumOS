@@ -42,7 +42,10 @@ import type { TimeMode } from "@/lib/time-mode";
 import { isQuietMode } from "@/lib/time-mode";
 import type { GreetingMessage } from "@/lib/greetings-library";
 import type { DashboardData, UserProfile } from "@/lib/types";
+import { getOneThing } from "@/lib/one-thing";
+import type { Priority } from "@/lib/one-thing";
 import { GreetingBar } from "./greeting-bar";
+import { OneThingCard } from "./one-thing-card";
 import { QuietMode } from "./quiet-mode";
 
 const completionTone = ["bg-rose-300/70", "bg-amber-300/70", "bg-cyan-300/70", "bg-emerald-300/70"];
@@ -72,6 +75,8 @@ export function MomentumDashboard({
   const [isPending, startTransition] = useTransition();
   const searchRef = useRef<HTMLInputElement>(null);
   const [promptQuery, setPromptQuery] = useState("");
+  const [dismissedUntil, setDismissedUntil] = useState<number | null>(null);
+  const oneThing = getOneThing(data.priorities as Priority[], currentMode);
 
   const filteredPrompts = useMemo(() => {
     const query = promptQuery.toLowerCase();
@@ -108,6 +113,14 @@ export function MomentumDashboard({
   return (
     <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
       <GreetingBar initialGreeting={greeting} onShown={recordGreetingAction} />
+      <OneThingCard
+        priority={oneThing}
+        onComplete={(id) => {
+          runAction(() => togglePriorityAction(id));
+        }}
+        onDismiss={() => setDismissedUntil(Date.now() + 60 * 60 * 1000)}
+        dismissedUntil={dismissedUntil}
+      />
       <section className="glass animate-rise rounded-[32px] p-5 sm:p-8">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.95fr)] lg:items-center">
           <div className="min-w-0 space-y-4">
