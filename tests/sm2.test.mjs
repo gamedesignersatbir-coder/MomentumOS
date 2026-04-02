@@ -62,6 +62,21 @@ describe('sm2Update', () => {
     const r = sm2Update(s, 2);
     assert.ok(r.ef >= 1.3, `EF must be >= 1.3, got ${r.ef}`);
   });
+
+  it('after quality=2 reset, next quality=5 restarts sequence from n=1 interval=1', () => {
+    const afterReset = sm2Update({ n: 5, ef: 2.5, intervalDays: 30 }, 2);
+    const next = sm2Update(afterReset, 5);
+    assert.equal(next.n, 1);
+    assert.equal(next.intervalDays, 1);
+  });
+
+  it('quality=3 on first review (n=0): n→1, interval stays 1', () => {
+    const s = initialSRState();
+    const r = sm2Update(s, 3);
+    assert.equal(r.n, 1);
+    assert.equal(r.intervalDays, 1);
+    assert.ok(r.ef < 2.5, 'EF should decrease with quality 3');
+  });
 });
 
 describe('addDays', () => {
