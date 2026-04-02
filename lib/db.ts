@@ -441,9 +441,10 @@ export function saveReflection(input: {
 // --- User Profile ---
 
 export function getUserProfile(): UserProfile | null {
-  return db
+  const row = db
     .prepare('SELECT * FROM user_profile WHERE id = 1')
     .get() as UserProfile | null;
+  return row ? toPlainObject(row) : null;
 }
 
 export function updateUserProfile(updates: Partial<Omit<UserProfile, 'id' | 'created_at'>>): void {
