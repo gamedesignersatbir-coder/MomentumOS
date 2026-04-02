@@ -42,10 +42,11 @@ export function Nav() {
       </span>
       {LINKS.map(({ href, label, icon: Icon }) => {
         const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
+        const typedHref = href as '/' | '/learn' | '/profile';
         return (
           <Link
             key={href}
-            href={href}
+            href={typedHref}
             className={cx(
               'flex items-center gap-1.5 px-3 py-1.5 rounded text-sm transition-colors',
               active

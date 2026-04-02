@@ -1,4 +1,4 @@
-import { getDashboardData, getUserProfile, getRecentGreetingIds } from '@/lib/db';
+import { getDashboardData, getUserProfile, getRecentGreetingIds, getSRItemsDueCount } from '@/lib/db';
 import { getTimeMode } from '@/lib/time-mode';
 import { selectGreeting } from '@/lib/greeting';
 import MomentumDashboard from '@/components/momentum-dashboard';
@@ -9,6 +9,7 @@ export default function Home() {
   const data = getDashboardData();
   const profile = getUserProfile();
   const recentIds = getRecentGreetingIds(30);
+  const srDueCount = getSRItemsDueCount();
 
   const mode = getTimeMode(); // uses server time — acceptable for IST
   // Note: this is an intentionally synchronous Server Component — all DB calls
@@ -37,6 +38,7 @@ export default function Home() {
       greeting={greeting}
       currentMode={mode}
       userProfile={profile}
+      srDueCount={srDueCount}
     />
   );
 }

@@ -29,6 +29,8 @@ function dayKey(date: Date) {
 }
 
 function initializeDatabase(database: DatabaseSync) {
+  database.exec(`PRAGMA busy_timeout=5000;`);
+  database.exec(`PRAGMA journal_mode=WAL;`);
   database.exec(`
     CREATE TABLE IF NOT EXISTS priorities (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
