@@ -65,7 +65,7 @@ export async function generateCurriculumAction(formData: FormData): Promise<
 > {
   const schema = z.object({
     goalStatement: z.string().min(10).max(2000),
-    domain: z.string().min(1).max(60),
+    domain: z.string().max(100).default('general'),
   });
   const parsed = schema.safeParse({
     goalStatement: field(formData, 'goalStatement'),

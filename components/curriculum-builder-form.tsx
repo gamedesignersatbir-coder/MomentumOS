@@ -3,7 +3,6 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateCurriculumAction } from '@/app/learn/actions';
-import { DOMAINS } from '@/lib/curriculum-types';
 
 export function CurriculumBuilderForm() {
   const router = useRouter();
@@ -29,23 +28,26 @@ export function CurriculumBuilderForm() {
         <textarea
           name="goalStatement"
           className="textarea"
-          rows={4}
-          placeholder="I want to understand programming basics so I can guide AI tools more precisely in my game design workflow."
+          rows={5}
+          placeholder="I want to learn how to design tight game mechanics and rapidly prototype them using AI coding tools like Claude Code — so I can go from concept to playable loop in hours, not weeks."
           required
         />
         <p style={{ marginTop: 'var(--space-2)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          Be specific — the more context, the better the curriculum.
+          The more specific and honest you are about your goal and starting point, the better the curriculum.
         </p>
       </div>
 
       <div>
-        <label className="soft-close-label">Domain</label>
-        <select name="domain" className="input" defaultValue="AI">
-          {DOMAINS.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-          <option value="other">Other</option>
-        </select>
+        <label className="soft-close-label">Domain / framing</label>
+        <input
+          name="domain"
+          className="input"
+          placeholder="e.g. game design + AI tools, programming, systems thinking"
+          defaultValue=""
+        />
+        <p style={{ marginTop: 'var(--space-2)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          Used as a label and framing lens. Can be multi-domain — type whatever fits.
+        </p>
       </div>
 
       {error && (

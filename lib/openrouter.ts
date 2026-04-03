@@ -128,7 +128,7 @@ Constraints:
     },
     {
       role: 'user',
-      content: `Goal: ${input.goalStatement}\nDomain: ${input.domain}`,
+      content: `Goal: ${input.goalStatement}\nDomain / framing lens: ${input.domain || 'infer from goal'}`,
     },
   ];
 }
