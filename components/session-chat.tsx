@@ -5,6 +5,39 @@ import { sendMessageAction, savePostSessionAction, startSessionAction } from '@/
 import type { ChatMessage } from '@/lib/curriculum-types';
 import { Send } from 'lucide-react';
 
+function MarkdownContent({ text }: { text: string }) {
+  const lines = text.split('\n');
+  return (
+    <div style={{ lineHeight: 1.6 }}>
+      {lines.map((line, i) => {
+        // Render inline markdown: **bold**, *italic*, `code`
+        const renderInline = (s: string) => {
+          const parts: React.ReactNode[] = [];
+          const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+          let last = 0, m: RegExpExecArray | null;
+          while ((m = re.exec(s)) !== null) {
+            if (m.index > last) parts.push(s.slice(last, m.index));
+            if (m[2]) parts.push(<strong key={m.index}>{m[2]}</strong>);
+            else if (m[3]) parts.push(<em key={m.index}>{m[3]}</em>);
+            else if (m[4]) parts.push(<code key={m.index} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 3, padding: '1px 5px', fontSize: '0.85em', fontFamily: 'monospace' }}>{m[4]}</code>);
+            last = m.index + m[0].length;
+          }
+          if (last < s.length) parts.push(s.slice(last));
+          return parts;
+        };
+
+        if (line.startsWith('### ')) return <h3 key={i} style={{ fontWeight: 700, marginTop: '0.75em', marginBottom: '0.25em', fontSize: '1em' }}>{line.slice(4)}</h3>;
+        if (line.startsWith('## ')) return <h2 key={i} style={{ fontWeight: 700, marginTop: '0.75em', marginBottom: '0.25em', fontSize: '1.05em' }}>{line.slice(3)}</h2>;
+        if (line.startsWith('# ')) return <h1 key={i} style={{ fontWeight: 700, marginTop: '0.75em', marginBottom: '0.25em', fontSize: '1.1em' }}>{line.slice(2)}</h1>;
+        if (/^(\d+)\. /.test(line)) return <div key={i} style={{ marginLeft: '1.2em' }}>{renderInline(line)}</div>;
+        if (line.startsWith('- ') || line.startsWith('* ')) return <div key={i} style={{ marginLeft: '1.2em' }}>• {renderInline(line.slice(2))}</div>;
+        if (line.trim() === '') return <div key={i} style={{ height: '0.6em' }} />;
+        return <div key={i}>{renderInline(line)}</div>;
+      })}
+    </div>
+  );
+}
+
 interface Props {
   curriculumId: number;
   moduleIndex: number;
@@ -116,10 +149,9 @@ export function SessionChat({ curriculumId, moduleIndex, priorFuzzy, initialSess
               fontSize: '0.9rem',
               lineHeight: 1.6,
               color: 'var(--text-primary)',
-              whiteSpace: 'pre-wrap',
             }}
           >
-            {msg.content}
+            {msg.role === 'assistant' ? <MarkdownContent text={msg.content} /> : msg.content}
           </div>
         ))}
         {isPending && (
