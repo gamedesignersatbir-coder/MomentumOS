@@ -50,7 +50,7 @@ export async function generateCurriculumAction(formData: FormData): Promise<
   { ok: true; id: number } | { ok: false; message: string }
 > {
   const schema = z.object({
-    goalStatement: z.string().min(10).max(400),
+    goalStatement: z.string().min(10).max(2000),
     domain: z.string().min(1).max(60),
   });
   const parsed = schema.safeParse({
