@@ -15,7 +15,7 @@ import {
   updateSessionChat,
   updateSRItem,
 } from '@/lib/db';
-import { chatCompletion, buildCurriculumPrompt, buildSessionPrompt } from '@/lib/openrouter';
+import { chatCompletion, buildCurriculumPrompt, buildSessionPrompt, buildModuleIntroPrompt } from '@/lib/openrouter';
 import { parseChatHistory, parseModules, type ChatMessage } from '@/lib/curriculum-types';
 import { sm2Update, addDays } from '@/lib/sm2';
 import { getUserProfile } from '@/lib/db';
@@ -120,18 +120,29 @@ export async function startSessionWithIntroAction(
     moduleTitle: mod.title,
     moduleDescription: mod.description,
     learningObjectives: mod.learningObjectives,
+    coreConceptsToMaster: mod.coreConceptsToMaster,
+    practicalExercise: mod.practicalExercise,
     priorFuzzy: priorSession?.whatsFuzzy ?? null,
     aboutMe: profile?.about_me ?? '',
+  });
+
+  const introPrompt = buildModuleIntroPrompt({
+    curriculumTitle: curriculum.title,
+    moduleTitle: mod.title,
+    moduleDescription: mod.description,
+    learningObjectives: mod.learningObjectives,
+    coreConceptsToMaster: mod.coreConceptsToMaster,
+    practicalExercise: mod.practicalExercise,
+    moduleIndex,
+    totalModules: modules.length,
+    priorFuzzy: priorSession?.whatsFuzzy ?? null,
   });
 
   let intro: string;
   try {
     intro = await chatCompletion([
       systemMsg,
-      {
-        role: 'user',
-        content: 'Introduce this module in this exact structure — no paragraphs, just this:\n\n**Module: [title]**\n\n**What you\'ll learn:**\n- [point 1]\n- [point 2]\n- [point 3]\n(max 5 bullet points, one line each)\n\n**By the end of this module you will:**\n- [outcome 1]\n- [outcome 2]\n\n**How we\'ll work:** One short sentence on the approach.\n\nThen one line inviting the first question. No other text.',
-      },
+      { role: 'user', content: introPrompt },
     ]);
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : 'AI unavailable.' };
@@ -186,6 +197,8 @@ export async function sendMessageAction(
     moduleTitle: mod.title,
     moduleDescription: mod.description,
     learningObjectives: mod.learningObjectives,
+    coreConceptsToMaster: mod.coreConceptsToMaster,
+    practicalExercise: mod.practicalExercise,
     priorFuzzy: priorSession?.whatsFuzzy ?? null,
     aboutMe: profile?.about_me ?? '',
   });

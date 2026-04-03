@@ -6,6 +6,8 @@ export interface CurriculumModule {
   estimatedMinutes: number;
   prerequisiteIds: string[];
   learningObjectives: string[];
+  coreConceptsToMaster?: string[];   // key terms/ideas that must be understood
+  practicalExercise?: string;        // concrete thing to do/build during session
 }
 
 /** Raw row shape returned by getCurriculumById / getCurricula */

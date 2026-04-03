@@ -42,7 +42,7 @@ export default async function SessionPage({ params, searchParams }: Props) {
         <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{mod.description}</p>
       </div>
 
-      <ObjectivesPanel objectives={mod.learningObjectives} />
+      <ObjectivesPanel objectives={mod.learningObjectives} practicalExercise={mod.practicalExercise} />
 
       <SessionChat
         curriculumId={curriculum.id}
