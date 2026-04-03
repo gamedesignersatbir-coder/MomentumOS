@@ -406,7 +406,7 @@ select:focus-visible {
 
 /* --- Page wrapper (single-column layout) --- */
 .page-wrapper {
-  max-width: 720px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: var(--space-8) var(--space-6);
 }
