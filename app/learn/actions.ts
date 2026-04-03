@@ -7,6 +7,7 @@ import {
   completeSession,
   createSession,
   createSRItem,
+  deleteCurriculum,
   getCurriculumById,
   getSRItemWithContext,
   getLatestCompletedSession,
@@ -41,6 +42,19 @@ function field(formData: FormData, key: string): string {
 }
 
 // ─── Actions ───────────────────────────────────────────────────
+
+/** Delete a curriculum and all its sessions + SR items. */
+export async function deleteCurriculumAction(
+  curriculumId: number
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    deleteCurriculum(curriculumId);
+    revalidatePath('/learn');
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Delete failed.' };
+  }
+}
 
 /**
  * Generate a curriculum JSON from a user goal via OpenRouter,

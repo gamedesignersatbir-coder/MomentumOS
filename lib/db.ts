@@ -559,6 +559,12 @@ export function saveCurriculum(input: {
   return Number(result.lastInsertRowid);
 }
 
+export function deleteCurriculum(id: number): void {
+  db.prepare('DELETE FROM sr_items WHERE item_type = ? AND item_id IN (SELECT id FROM learning_sessions WHERE curriculum_id = ?)').run('learning_session', id);
+  db.prepare('DELETE FROM learning_sessions WHERE curriculum_id = ?').run(id);
+  db.prepare('DELETE FROM curricula WHERE id = ?').run(id);
+}
+
 export function getCurriculumSessionCount(curriculumId: number): number {
   const row = db.prepare(
     "SELECT COUNT(*) as count FROM learning_sessions WHERE curriculum_id = ? AND completed_at IS NOT NULL"
