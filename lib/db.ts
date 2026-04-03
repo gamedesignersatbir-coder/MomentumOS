@@ -29,6 +29,8 @@ function dayKey(date: Date) {
 }
 
 function initializeDatabase(database: DatabaseSync) {
+  database.exec(`PRAGMA busy_timeout=5000;`);
+  database.exec(`PRAGMA journal_mode=WAL;`);
   database.exec(`
     CREATE TABLE IF NOT EXISTS priorities (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,6 +105,40 @@ function initializeDatabase(database: DatabaseSync) {
     BEGIN
       UPDATE priorities SET updated_at = datetime('now') WHERE id = NEW.id;
     END;
+
+    CREATE TABLE IF NOT EXISTS curricula (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      goal_statement TEXT NOT NULL,
+      domain TEXT NOT NULL,
+      modules_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS learning_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      curriculum_id INTEGER NOT NULL REFERENCES curricula(id),
+      module_index INTEGER NOT NULL DEFAULT 0,
+      chat_history_json TEXT NOT NULL DEFAULT '[]',
+      what_landed TEXT NOT NULL DEFAULT '',
+      whats_fuzzy TEXT NOT NULL DEFAULT '',
+      confidence INTEGER NOT NULL DEFAULT 0,
+      next_action TEXT NOT NULL DEFAULT '',
+      completed_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS sr_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      item_type TEXT NOT NULL DEFAULT 'learning_session',
+      item_id INTEGER NOT NULL,
+      n INTEGER NOT NULL DEFAULT 0,
+      ef REAL NOT NULL DEFAULT 2.5,
+      interval_days INTEGER NOT NULL DEFAULT 1,
+      next_review_date TEXT NOT NULL,
+      last_shown_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 }
 
@@ -489,4 +525,146 @@ export function recordGreetingShown(messageId: string): void {
   db.prepare(
     'INSERT INTO greeting_history (message_id) VALUES (?)'
   ).run(messageId);
+}
+
+// --- Curriculum queries ---
+
+export function getCurricula(): Array<{
+  id: number; title: string; goalStatement: string; domain: string;
+  modulesJson: string; createdAt: string;
+}> {
+  return toPlainObject(
+    db.prepare(
+      'SELECT id, title, goal_statement as goalStatement, domain, modules_json as modulesJson, created_at as createdAt FROM curricula ORDER BY id DESC'
+    ).all()
+  ) as ReturnType<typeof getCurricula>;
+}
+
+export function getCurriculumById(id: number): {
+  id: number; title: string; goalStatement: string; domain: string;
+  modulesJson: string; createdAt: string;
+} | null {
+  const row = db.prepare(
+    'SELECT id, title, goal_statement as goalStatement, domain, modules_json as modulesJson, created_at as createdAt FROM curricula WHERE id = ?'
+  ).get(id);
+  return row ? (toPlainObject(row) as ReturnType<typeof getCurriculumById>) : null;
+}
+
+export function saveCurriculum(input: {
+  title: string; goalStatement: string; domain: string; modulesJson: string;
+}): number {
+  const result = db.prepare(
+    'INSERT INTO curricula (title, goal_statement, domain, modules_json) VALUES (?, ?, ?, ?)'
+  ).run(input.title, input.goalStatement, input.domain, input.modulesJson) as { lastInsertRowid: number | bigint };
+  return Number(result.lastInsertRowid);
+}
+
+export function getCurriculumSessionCount(curriculumId: number): number {
+  const row = db.prepare(
+    "SELECT COUNT(*) as count FROM learning_sessions WHERE curriculum_id = ? AND completed_at IS NOT NULL"
+  ).get(curriculumId) as { count: number };
+  return row.count;
+}
+
+// --- Learning session queries ---
+
+export function getSessionsForCurriculum(curriculumId: number): Array<{
+  id: number; curriculumId: number; moduleIndex: number; chatHistoryJson: string;
+  whatLanded: string; whatsFuzzy: string; confidence: number;
+  nextAction: string; completedAt: string | null; createdAt: string;
+}> {
+  return toPlainObject(
+    db.prepare(
+      'SELECT id, curriculum_id as curriculumId, module_index as moduleIndex, chat_history_json as chatHistoryJson, what_landed as whatLanded, whats_fuzzy as whatsFuzzy, confidence, next_action as nextAction, completed_at as completedAt, created_at as createdAt FROM learning_sessions WHERE curriculum_id = ? ORDER BY id DESC'
+    ).all(curriculumId)
+  ) as ReturnType<typeof getSessionsForCurriculum>;
+}
+
+export function getLatestCompletedSession(curriculumId: number, moduleIndex: number): {
+  id: number; whatsFuzzy: string; nextAction: string; completedAt: string;
+} | null {
+  const row = db.prepare(
+    'SELECT id, whats_fuzzy as whatsFuzzy, next_action as nextAction, completed_at as completedAt FROM learning_sessions WHERE curriculum_id = ? AND module_index = ? AND completed_at IS NOT NULL ORDER BY id DESC LIMIT 1'
+  ).get(curriculumId, moduleIndex);
+  return row ? (toPlainObject(row) as ReturnType<typeof getLatestCompletedSession>) : null;
+}
+
+export function createSession(curriculumId: number, moduleIndex: number): number {
+  const result = db.prepare(
+    'INSERT INTO learning_sessions (curriculum_id, module_index) VALUES (?, ?)'
+  ).run(curriculumId, moduleIndex) as { lastInsertRowid: number | bigint };
+  return Number(result.lastInsertRowid);
+}
+
+export function getSessionById(id: number): {
+  id: number; curriculumId: number; moduleIndex: number; chatHistoryJson: string;
+} | null {
+  const row = db.prepare(
+    'SELECT id, curriculum_id as curriculumId, module_index as moduleIndex, chat_history_json as chatHistoryJson FROM learning_sessions WHERE id = ?'
+  ).get(id);
+  return row ? (toPlainObject(row) as ReturnType<typeof getSessionById>) : null;
+}
+
+export function updateSessionChat(sessionId: number, chatHistoryJson: string): void {
+  db.prepare('UPDATE learning_sessions SET chat_history_json = ? WHERE id = ?').run(chatHistoryJson, sessionId);
+}
+
+export function completeSession(sessionId: number, input: {
+  whatLanded: string; whatsFuzzy: string; confidence: number; nextAction: string;
+}): void {
+  db.prepare(
+    "UPDATE learning_sessions SET what_landed = ?, whats_fuzzy = ?, confidence = ?, next_action = ?, completed_at = datetime('now') WHERE id = ?"
+  ).run(input.whatLanded, input.whatsFuzzy, input.confidence, input.nextAction, sessionId);
+}
+
+// --- SR item queries ---
+
+export function getSRItemsDueCount(asOfDate?: string): number {
+  const date = asOfDate ?? new Date().toISOString().slice(0, 10);
+  const row = db.prepare(
+    "SELECT COUNT(*) as count FROM sr_items WHERE next_review_date <= ?"
+  ).get(date) as { count: number };
+  return row.count;
+}
+
+export function getSRItemsDue(asOfDate?: string): Array<{
+  id: number; itemType: string; itemId: number; n: number; ef: number;
+  intervalDays: number; nextReviewDate: string; lastShownAt: string | null;
+}> {
+  const date = asOfDate ?? new Date().toISOString().slice(0, 10);
+  return toPlainObject(
+    db.prepare(
+      'SELECT id, item_type as itemType, item_id as itemId, n, ef, interval_days as intervalDays, next_review_date as nextReviewDate, last_shown_at as lastShownAt FROM sr_items WHERE next_review_date <= ? ORDER BY next_review_date ASC'
+    ).all(date)
+  ) as ReturnType<typeof getSRItemsDue>;
+}
+
+export function createSRItem(itemType: string, itemId: number, nextReviewDate: string): number {
+  const result = db.prepare(
+    'INSERT INTO sr_items (item_type, item_id, next_review_date) VALUES (?, ?, ?)'
+  ).run(itemType, itemId, nextReviewDate) as { lastInsertRowid: number | bigint };
+  return Number(result.lastInsertRowid);
+}
+
+export function updateSRItem(id: number, n: number, ef: number, intervalDays: number, nextReviewDate: string): void {
+  db.prepare(
+    "UPDATE sr_items SET n = ?, ef = ?, interval_days = ?, next_review_date = ?, last_shown_at = datetime('now') WHERE id = ?"
+  ).run(n, ef, intervalDays, nextReviewDate, id);
+}
+
+export function getSRItemWithContext(srItemId: number): {
+  id: number; n: number; ef: number; intervalDays: number; nextReviewDate: string;
+  whatsFuzzy: string; nextAction: string; curriculumTitle: string; moduleIndex: number;
+  modulesJson: string;
+} | null {
+  const row = db.prepare(`
+    SELECT s.id, s.n, s.ef, s.interval_days as intervalDays, s.next_review_date as nextReviewDate,
+           ls.whats_fuzzy as whatsFuzzy, ls.next_action as nextAction, ls.module_index as moduleIndex,
+           c.title as curriculumTitle, c.modules_json as modulesJson
+    FROM sr_items s
+    JOIN learning_sessions ls ON ls.id = s.item_id
+    JOIN curricula c ON c.id = ls.curriculum_id
+    WHERE s.id = ?
+  `).get(srItemId);
+  return row ? (toPlainObject(row) as ReturnType<typeof getSRItemWithContext>) : null;
 }

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { z, type ZodError } from "zod";
 
 import {
   addFocusBlock,
@@ -16,8 +16,10 @@ import {
   seedTomorrowPriority,
   toggleFocusBlock,
   togglePriority,
-  toggleQuickTask
+  toggleQuickTask,
+  updateUserProfile,
 } from "@/lib/db";
+import { timeToMinutes } from '@/lib/curriculum-types';
 
 const prioritySchema = z.object({
   title: z.string().min(3).max(80),
@@ -176,4 +178,67 @@ export async function softCloseAction(formData: {
   }
 
   revalidatePath('/');
+}
+
+// ─── Profile helpers ────────────────────────────────────────────
+
+const PROFILE_FIELD_LABELS: Record<string, string> = {
+  display_name: 'Display name',
+  about_me: 'About me',
+  domains: 'Domains',
+  sadhana_morning_end: 'Sadhana morning end',
+  sadhana_afternoon_start: 'Sadhana afternoon start',
+  sadhana_afternoon_end: 'Sadhana afternoon end',
+  work_start: 'Work start',
+  work_end: 'Work end',
+};
+
+function friendlyError(err: ZodError): string {
+  const issue = err.issues[0];
+  const key = String(issue.path[0] ?? '');
+  const name = PROFILE_FIELD_LABELS[key] ?? (key || 'Input');
+  if (issue.code === 'too_small') return `${name} can't be blank.`;
+  return `${name}: ${issue.message}`;
+}
+
+const profileSchema = z.object({
+  display_name: z.string().min(1).max(60),
+  about_me: z.string().max(500).default(''),
+  domains: z.string().default('[]'),
+  sadhana_morning_end: z.string().min(1),
+  sadhana_afternoon_start: z.string().min(1),
+  sadhana_afternoon_end: z.string().min(1),
+  work_start: z.string().min(1),
+  work_end: z.string().min(1),
+});
+
+export async function updateProfileAction(formData: FormData): Promise<
+  { ok: true; message: string } | { ok: false; message: string }
+> {
+  const result = profileSchema.safeParse({
+    display_name: field(formData, 'display_name'),
+    about_me: field(formData, 'about_me'),
+    domains: field(formData, 'domains'),
+    sadhana_morning_end: field(formData, 'sadhana_morning_end'),
+    sadhana_afternoon_start: field(formData, 'sadhana_afternoon_start'),
+    sadhana_afternoon_end: field(formData, 'sadhana_afternoon_end'),
+    work_start: field(formData, 'work_start'),
+    work_end: field(formData, 'work_end'),
+  });
+  if (!result.success) return { ok: false, message: friendlyError(result.error) };
+
+  const d = result.data;
+  updateUserProfile({
+    display_name: d.display_name,
+    about_me: d.about_me,
+    domains_json: d.domains,
+    sadhana_morning_end: timeToMinutes(d.sadhana_morning_end),
+    sadhana_afternoon_start: timeToMinutes(d.sadhana_afternoon_start),
+    sadhana_afternoon_end: timeToMinutes(d.sadhana_afternoon_end),
+    work_start: timeToMinutes(d.work_start),
+    work_end: timeToMinutes(d.work_end),
+  });
+  revalidatePath('/profile');
+  revalidatePath('/');
+  return { ok: true, message: 'Profile saved.' };
 }

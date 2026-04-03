@@ -63,6 +63,7 @@ interface Props {
   greeting: GreetingMessage;
   currentMode: TimeMode;
   userProfile: UserProfile | null;
+  srDueCount: number;
 }
 
 export function MomentumDashboard({
@@ -70,6 +71,7 @@ export function MomentumDashboard({
   greeting,
   currentMode,
   userProfile: _userProfile,
+  srDueCount,
 }: Props) {
   const todayLabel = format(new Date(), "EEEE, MMM d");
   const router = useRouter();
@@ -136,6 +138,16 @@ export function MomentumDashboard({
   return (
     <main className="page-wrapper">
       <GreetingBar initialGreeting={greeting} onShown={recordGreetingAction} />
+      {currentMode === 'morning-brief' && srDueCount > 0 && (
+        <div className="overload-prompt" style={{ marginBottom: 'var(--space-4)' }}>
+          <span>
+            {srDueCount} learning {srDueCount === 1 ? 'review' : 'reviews'} due today —
+          </span>
+          <a href="/learn#reviews" className="btn-link" style={{ marginLeft: 4 }}>
+            review now
+          </a>
+        </div>
+      )}
       <OneThingCard
         priority={oneThing}
         onComplete={(id) => {
