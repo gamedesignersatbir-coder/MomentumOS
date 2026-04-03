@@ -98,6 +98,53 @@ export async function generateCurriculumAction(formData: FormData): Promise<
 }
 
 /**
+ * Create a new session and get an AI opening message introducing the module.
+ * The intro is saved as the first assistant message — no user message bubble shown.
+ */
+export async function startSessionWithIntroAction(
+  curriculumId: number,
+  moduleIndex: number
+): Promise<{ ok: true; sessionId: number; intro: string } | { ok: false; message: string }> {
+  const curriculum = getCurriculumById(curriculumId);
+  if (!curriculum) return { ok: false, message: 'Curriculum not found.' };
+  const modules = parseModules(curriculum.modulesJson);
+  const mod = modules[moduleIndex];
+  if (!mod) return { ok: false, message: 'Module not found.' };
+
+  const profile = getUserProfile();
+  const priorSession = getLatestCompletedSession(curriculumId, moduleIndex);
+  const sessionId = createSession(curriculumId, moduleIndex);
+
+  const systemMsg = buildSessionPrompt({
+    curriculumTitle: curriculum.title,
+    moduleTitle: mod.title,
+    moduleDescription: mod.description,
+    learningObjectives: mod.learningObjectives,
+    priorFuzzy: priorSession?.whatsFuzzy ?? null,
+    aboutMe: profile?.about_me ?? '',
+  });
+
+  let intro: string;
+  try {
+    intro = await chatCompletion([
+      systemMsg,
+      {
+        role: 'user',
+        content: 'Please give me a brief orientation to this module: what we\'ll cover, how we\'ll approach it, and what I should be able to do by the end. Keep it concise — 2-3 short paragraphs. Then invite me to ask my first question.',
+      },
+    ]);
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'AI unavailable.' };
+  }
+
+  const now = new Date().toISOString();
+  const history: ChatMessage[] = [{ role: 'assistant', content: intro, createdAt: now }];
+  updateSessionChat(sessionId, JSON.stringify(history));
+
+  return { ok: true, sessionId, intro };
+}
+
+/**
  * Create a new learning session for curriculum+module, return sessionId.
  */
 export async function startSessionAction(

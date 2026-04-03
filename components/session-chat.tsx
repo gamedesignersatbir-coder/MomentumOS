@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, useRef, useEffect } from 'react';
-import { sendMessageAction, savePostSessionAction, startSessionAction } from '@/app/learn/actions';
+import { sendMessageAction, savePostSessionAction, startSessionWithIntroAction } from '@/app/learn/actions';
 import type { ChatMessage } from '@/lib/curriculum-types';
 import { Send } from 'lucide-react';
 
@@ -62,13 +62,17 @@ export function SessionChat({ curriculumId, moduleIndex, priorFuzzy, initialSess
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  async function ensureSession(): Promise<number | null> {
-    if (sessionId !== null) return sessionId;
-    const result = await startSessionAction(curriculumId, moduleIndex);
-    if (!result.ok) { setError(result.message); return null; }
-    setSessionId(result.sessionId);
-    return result.sessionId;
-  }
+  // Auto-fire opening message when session has no history yet
+  useEffect(() => {
+    if (initialHistory.length > 0 || initialSessionId !== null) return;
+    startTransition(async () => {
+      const result = await startSessionWithIntroAction(curriculumId, moduleIndex);
+      if (!result.ok) { setError(result.message); return; }
+      setSessionId(result.sessionId);
+      setMessages([{ role: 'assistant', content: result.intro, createdAt: new Date().toISOString() }]);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleSend() {
     const content = inputValue.trim();
@@ -77,10 +81,8 @@ export function SessionChat({ curriculumId, moduleIndex, priorFuzzy, initialSess
     setError(null);
 
     startTransition(async () => {
-      const sid = await ensureSession();
-      if (sid === null) return;
-
-      const result = await sendMessageAction(sid, curriculumId, moduleIndex, content);
+      if (sessionId === null) return; // session is created by intro action
+      const result = await sendMessageAction(sessionId, curriculumId, moduleIndex, content);
       if (!result.ok) { setError(result.message); return; }
 
       const now = new Date().toISOString();
