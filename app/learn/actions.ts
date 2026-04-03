@@ -130,7 +130,7 @@ export async function startSessionWithIntroAction(
       systemMsg,
       {
         role: 'user',
-        content: 'Please give me a brief orientation to this module: what we\'ll cover, how we\'ll approach it, and what I should be able to do by the end. Keep it concise — 2-3 short paragraphs. Then invite me to ask my first question.',
+        content: 'Introduce this module in this exact structure — no paragraphs, just this:\n\n**Module: [title]**\n\n**What you\'ll learn:**\n- [point 1]\n- [point 2]\n- [point 3]\n(max 5 bullet points, one line each)\n\n**By the end of this module you will:**\n- [outcome 1]\n- [outcome 2]\n\n**How we\'ll work:** One short sentence on the approach.\n\nThen one line inviting the first question. No other text.',
       },
     ]);
   } catch (err) {
