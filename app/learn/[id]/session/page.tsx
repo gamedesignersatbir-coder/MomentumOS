@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getCurriculumById, getLatestCompletedSession } from '@/lib/db';
 import { parseModules } from '@/lib/curriculum-types';
 import { SessionChat } from '@/components/session-chat';
+import { ObjectivesPanel } from '@/components/objectives-panel';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,6 @@ export default async function SessionPage({ params, searchParams }: Props) {
   const mod = modules[moduleIndex];
   if (!mod) notFound();
 
-  // Get prior session's "what's fuzzy" for pre-session context
   const priorSession = getLatestCompletedSession(curriculum.id, moduleIndex);
 
   return (
@@ -32,7 +32,7 @@ export default async function SessionPage({ params, searchParams }: Props) {
           ← {curriculum.title}
         </a>
       </div>
-      <div style={{ marginBottom: 'var(--space-5)' }}>
+      <div style={{ marginBottom: 'var(--space-4)' }}>
         <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--accent-muted)', marginBottom: 'var(--space-1)' }}>
           Module {moduleIndex + 1}
         </p>
@@ -41,6 +41,9 @@ export default async function SessionPage({ params, searchParams }: Props) {
         </h1>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{mod.description}</p>
       </div>
+
+      <ObjectivesPanel objectives={mod.learningObjectives} />
+
       <SessionChat
         curriculumId={curriculum.id}
         moduleIndex={moduleIndex}

@@ -4,35 +4,59 @@ import { useState, useTransition, useRef, useEffect } from 'react';
 import { sendMessageAction, savePostSessionAction, startSessionWithIntroAction } from '@/app/learn/actions';
 import type { ChatMessage } from '@/lib/curriculum-types';
 import { Send } from 'lucide-react';
+import SyntaxHighlighter from 'react-syntax-highlighter';
+import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
 function MarkdownContent({ text }: { text: string }) {
-  const lines = text.split('\n');
+  // Split on fenced code blocks first
+  const segments = text.split(/(```[\w]*\n[\s\S]*?```)/g);
+
   return (
     <div style={{ lineHeight: 1.6 }}>
-      {lines.map((line, i) => {
-        // Render inline markdown: **bold**, *italic*, `code`
-        const renderInline = (s: string) => {
-          const parts: React.ReactNode[] = [];
-          const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
-          let last = 0, m: RegExpExecArray | null;
-          while ((m = re.exec(s)) !== null) {
-            if (m.index > last) parts.push(s.slice(last, m.index));
-            if (m[2]) parts.push(<strong key={m.index}>{m[2]}</strong>);
-            else if (m[3]) parts.push(<em key={m.index}>{m[3]}</em>);
-            else if (m[4]) parts.push(<code key={m.index} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 3, padding: '1px 5px', fontSize: '0.85em', fontFamily: 'monospace' }}>{m[4]}</code>);
-            last = m.index + m[0].length;
-          }
-          if (last < s.length) parts.push(s.slice(last));
-          return parts;
-        };
+      {segments.map((seg, si) => {
+        const codeMatch = seg.match(/^```([\w]*)\n([\s\S]*?)```$/);
+        if (codeMatch) {
+          const lang = codeMatch[1] || 'text';
+          const code = codeMatch[2];
+          return (
+            <div key={si} style={{ margin: '0.5em 0', borderRadius: 'var(--radius-sm)', overflow: 'hidden', fontSize: '0.82em' }}>
+              <SyntaxHighlighter language={lang} style={atomOneDark} customStyle={{ margin: 0, borderRadius: 0, background: '#1a1a24' }}>
+                {code}
+              </SyntaxHighlighter>
+            </div>
+          );
+        }
 
-        if (line.startsWith('### ')) return <h3 key={i} style={{ fontWeight: 700, marginTop: '0.75em', marginBottom: '0.25em', fontSize: '1em' }}>{line.slice(4)}</h3>;
-        if (line.startsWith('## ')) return <h2 key={i} style={{ fontWeight: 700, marginTop: '0.75em', marginBottom: '0.25em', fontSize: '1.05em' }}>{line.slice(3)}</h2>;
-        if (line.startsWith('# ')) return <h1 key={i} style={{ fontWeight: 700, marginTop: '0.75em', marginBottom: '0.25em', fontSize: '1.1em' }}>{line.slice(2)}</h1>;
-        if (/^(\d+)\. /.test(line)) return <div key={i} style={{ marginLeft: '1.2em' }}>{renderInline(line)}</div>;
-        if (line.startsWith('- ') || line.startsWith('* ')) return <div key={i} style={{ marginLeft: '1.2em' }}>• {renderInline(line.slice(2))}</div>;
-        if (line.trim() === '') return <div key={i} style={{ height: '0.6em' }} />;
-        return <div key={i}>{renderInline(line)}</div>;
+        // Render inline markdown for non-code segments
+        const lines = seg.split('\n');
+        return (
+          <span key={si}>
+            {lines.map((line, i) => {
+              const renderInline = (s: string) => {
+                const parts: React.ReactNode[] = [];
+                const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+                let last = 0, m: RegExpExecArray | null;
+                while ((m = re.exec(s)) !== null) {
+                  if (m.index > last) parts.push(s.slice(last, m.index));
+                  if (m[2]) parts.push(<strong key={m.index}>{m[2]}</strong>);
+                  else if (m[3]) parts.push(<em key={m.index}>{m[3]}</em>);
+                  else if (m[4]) parts.push(<code key={m.index} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 3, padding: '1px 5px', fontSize: '0.85em', fontFamily: 'monospace' }}>{m[4]}</code>);
+                  last = m.index + m[0].length;
+                }
+                if (last < s.length) parts.push(s.slice(last));
+                return parts;
+              };
+
+              if (line.startsWith('### ')) return <h3 key={i} style={{ fontWeight: 700, marginTop: '0.75em', marginBottom: '0.25em', fontSize: '1em' }}>{line.slice(4)}</h3>;
+              if (line.startsWith('## ')) return <h2 key={i} style={{ fontWeight: 700, marginTop: '0.75em', marginBottom: '0.25em', fontSize: '1.05em' }}>{line.slice(3)}</h2>;
+              if (line.startsWith('# ')) return <h1 key={i} style={{ fontWeight: 700, marginTop: '0.75em', marginBottom: '0.25em', fontSize: '1.1em' }}>{line.slice(2)}</h1>;
+              if (/^(\d+)\. /.test(line)) return <div key={i} style={{ marginLeft: '1.2em' }}>{renderInline(line)}</div>;
+              if (line.startsWith('- ') || line.startsWith('* ')) return <div key={i} style={{ marginLeft: '1.2em' }}>• {renderInline(line.slice(2))}</div>;
+              if (line.trim() === '') return <div key={i} style={{ height: '0.6em' }} />;
+              return <div key={i}>{renderInline(line)}</div>;
+            })}
+          </span>
+        );
       })}
     </div>
   );
