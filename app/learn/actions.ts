@@ -75,9 +75,11 @@ export async function generateCurriculumAction(formData: FormData): Promise<
   }
 
   // Parse and validate the JSON returned by the AI
+  // Strip markdown fences if the model wrapped its response
+  const cleanedJson = rawJson.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   let modulesJson: string;
   try {
-    const parsed = JSON.parse(rawJson) as { title?: string; modules?: unknown };
+    const parsed = JSON.parse(cleanedJson) as { title?: string; modules?: unknown };
     if (!parsed.title || !Array.isArray(parsed.modules)) {
       throw new Error('Unexpected shape');
     }
