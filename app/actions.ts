@@ -11,6 +11,7 @@ import {
   addQuickTaskInbox,
   archivePriority,
   deferTask,
+  markReflectionResurfaced,
   restoreTask,
   recordGreetingShown,
   saveReflection,
@@ -153,6 +154,11 @@ export async function restoreTaskAction(
   type: 'priority' | 'quick_task'
 ): Promise<void> {
   restoreTask(id, type);
+  revalidatePath('/');
+}
+
+export async function dismissResurfaceAction(id: number): Promise<void> {
+  markReflectionResurfaced(id);
   revalidatePath('/');
 }
 

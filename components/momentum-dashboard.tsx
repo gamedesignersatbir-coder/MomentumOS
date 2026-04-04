@@ -13,7 +13,8 @@ import {
   Search,
   Sparkles,
   Target,
-  Timer
+  Timer,
+  X
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -22,6 +23,7 @@ import {
   addLearningEntryAction,
   addPriorityAction,
   addQuickTaskAction,
+  dismissResurfaceAction,
   recordGreetingAction,
   restoreTaskAction,
   saveReflectionAction,
@@ -89,6 +91,7 @@ export function MomentumDashboard({
   const [softCloseShownThisSession, setSoftCloseShownThisSession] = useState(false);
   const [showAllPriorities, setShowAllPriorities] = useState(false);
   const [deferredExpanded, setDeferredExpanded] = useState(false);
+  const [resurfaceDismissed, setResurfaceDismissed] = useState(false);
   const oneThing = getOneThing(data.priorities as Priority[], currentMode);
 
   const displayPriorities = useMemo(
@@ -167,6 +170,28 @@ export function MomentumDashboard({
           <a href="/learn#reviews" className="btn-link" style={{ marginLeft: 4 }}>
             review now
           </a>
+        </div>
+      )}
+      {data.resurfacedReflection && !resurfaceDismissed && (
+        <div className="rounded-[28px] border border-amber-200/10 bg-amber-500/[0.04] px-5 py-4 mb-4 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-[0.22em] text-amber-300/60 mb-1">
+              {data.resurfacedReflection.days_ago} days ago
+            </p>
+            <p className="text-sm text-slate-300 line-clamp-2">
+              {data.resurfacedReflection.energy_win}
+            </p>
+          </div>
+          <button
+            className="shrink-0 text-slate-500 hover:text-slate-300 transition"
+            onClick={() => {
+              setResurfaceDismissed(true);
+              runAction(() => dismissResurfaceAction(data.resurfacedReflection!.id));
+            }}
+            aria-label="Dismiss"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
       <OneThingCard

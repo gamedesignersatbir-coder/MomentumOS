@@ -4,7 +4,7 @@ import path from "node:path";
 import { format, subDays } from "date-fns";
 
 import { buildNextDaySuggestion } from "@/lib/reflection";
-import type { DashboardData, UserProfile } from "@/lib/types";
+import type { DashboardData, ResurfacedReflection, UserProfile } from "@/lib/types";
 
 const databasePath = path.join(process.cwd(), "momentum-os.db");
 
@@ -81,6 +81,14 @@ function initializeDatabase(database: DatabaseSync) {
       suggestion TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+  `);
+  // Migration: add resurfaced_at if missing (safe to run every startup)
+  try {
+    database.exec(`ALTER TABLE reflections ADD COLUMN resurfaced_at TEXT`);
+  } catch {
+    // Column already exists — expected on subsequent runs
+  }
+  database.exec(`
     CREATE TABLE IF NOT EXISTS user_profile (
       id INTEGER PRIMARY KEY,
       display_name TEXT NOT NULL DEFAULT 'Satbir',
@@ -389,7 +397,8 @@ export function getDashboardData(): DashboardData {
         latestReflection?.suggestion ??
         "Protect one deep block before noon and close with a five-minute review.",
       learningConfidenceAverage: Number.isFinite(confidenceAverage) ? Number(confidenceAverage.toFixed(1)) : 0
-    }
+    },
+    resurfacedReflection: getResurfaceableReflection(),
   };
 }
 
@@ -491,6 +500,28 @@ export function saveReflection(input: {
   ).run(input.energyWin, input.learningEdge, input.familyNote, suggestion, dayKey(new Date()));
 
   return suggestion;
+}
+
+export function getResurfaceableReflection(): ResurfacedReflection | null {
+  const row = db.prepare(`
+    SELECT *,
+      CAST(julianday('now') - julianday(created_at) AS INTEGER) as days_ago
+    FROM reflections
+    WHERE resurfaced_at IS NULL AND (
+      created_at BETWEEN datetime('now', '-8 days') AND datetime('now', '-6 days')
+      OR created_at BETWEEN datetime('now', '-32 days') AND datetime('now', '-28 days')
+      OR created_at BETWEEN datetime('now', '-93 days') AND datetime('now', '-87 days')
+    )
+    ORDER BY created_at DESC
+    LIMIT 1
+  `).get() as ResurfacedReflection | undefined;
+  return row ?? null;
+}
+
+export function markReflectionResurfaced(id: number): void {
+  db.prepare(
+    `UPDATE reflections SET resurfaced_at = datetime('now') WHERE id = ?`
+  ).run(id);
 }
 
 // --- User Profile ---

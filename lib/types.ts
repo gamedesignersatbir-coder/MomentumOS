@@ -1,3 +1,14 @@
+export interface ResurfacedReflection {
+  id: number;
+  energy_win: string;
+  learning_edge: string;
+  family_note: string;
+  suggestion: string;
+  created_at: string;
+  resurfaced_at: string | null;
+  days_ago: number;
+}
+
 export type DashboardData = {
   priorities: Array<{
     id: number;
@@ -50,6 +61,7 @@ export type DashboardData = {
     nextReviewCue: string;
     learningConfidenceAverage: number;
   };
+  resurfacedReflection: ResurfacedReflection | null;
 };
 
 export interface UserProfile {
