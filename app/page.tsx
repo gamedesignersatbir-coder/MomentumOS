@@ -42,7 +42,7 @@ export default function Home() {
   const greeting = selectGreeting({
     mode,
     loadLevel,
-    dayOfWeek: new Date().getDay(),
+    dayOfWeek: now.getDay(),
     isAbsent: false, // TODO Phase 5: detect from last_opened timestamp
     recentlyShownIds: recentIds,
   });
