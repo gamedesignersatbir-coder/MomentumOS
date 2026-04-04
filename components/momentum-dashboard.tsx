@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Copy,
   Plus,
+  RotateCcw,
   Search,
   Sparkles,
   Target,
@@ -22,6 +23,7 @@ import {
   addPriorityAction,
   addQuickTaskAction,
   recordGreetingAction,
+  restoreTaskAction,
   saveReflectionAction,
   toggleFocusBlockAction,
   togglePriorityAction,
@@ -86,7 +88,26 @@ export function MomentumDashboard({
   const [softCloseOpen, setSoftCloseOpen] = useState(false);
   const [softCloseShownThisSession, setSoftCloseShownThisSession] = useState(false);
   const [showAllPriorities, setShowAllPriorities] = useState(false);
+  const [deferredExpanded, setDeferredExpanded] = useState(false);
   const oneThing = getOneThing(data.priorities as Priority[], currentMode);
+
+  const displayPriorities = useMemo(
+    () => data.priorities.filter((p) => p.status !== 'deferred'),
+    [data.priorities]
+  );
+  const displayQuickTasks = useMemo(
+    () => data.quickTasks.filter((t) => t.status !== 'deferred'),
+    [data.quickTasks]
+  );
+  const deferredPriorities = useMemo(
+    () => data.priorities.filter((p) => p.status === 'deferred'),
+    [data.priorities]
+  );
+  const deferredTasks = useMemo(
+    () => data.quickTasks.filter((t) => t.status === 'deferred'),
+    [data.quickTasks]
+  );
+  const hasDeferredItems = deferredPriorities.length > 0 || deferredTasks.length > 0;
 
   const totalActive =
     data.priorities.filter((p) => p.status === 'active').length +
@@ -246,9 +267,9 @@ export function MomentumDashboard({
                 </form>
 
                 <div className="grid gap-3">
-                  {data.priorities.length ? (
+                  {displayPriorities.length ? (
                     <>
-                      {(showAllPriorities ? data.priorities : data.priorities.slice(0, 3)).map((priority) => (
+                      {(showAllPriorities ? displayPriorities : displayPriorities.slice(0, 3)).map((priority) => (
                         <button
                           key={priority.id}
                           type="button"
@@ -275,13 +296,13 @@ export function MomentumDashboard({
                           </div>
                         </button>
                       ))}
-                      {!showAllPriorities && data.priorities.length > 3 && (
+                      {!showAllPriorities && displayPriorities.length > 3 && (
                         <button
                           type="button"
                           className="btn-ghost btn-small"
                           onClick={() => setShowAllPriorities(true)}
                         >
-                          and {data.priorities.length - 3} more...
+                          and {displayPriorities.length - 3} more...
                         </button>
                       )}
                     </>
@@ -364,8 +385,8 @@ export function MomentumDashboard({
                     </Button>
                   </form>
                   <div className="space-y-2">
-                    {data.quickTasks.length ? (
-                      data.quickTasks.map((task) => (
+                    {displayQuickTasks.length ? (
+                      displayQuickTasks.map((task) => (
                         <label
                           key={task.id}
                           className="flex cursor-pointer items-center gap-3 rounded-2xl border border-white/8 px-3 py-2"
@@ -577,6 +598,87 @@ export function MomentumDashboard({
           </Card>
         </section>
       </div>
+
+      {hasDeferredItems && (
+        <section className="mt-6">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between rounded-[28px] border border-white/10 bg-white/[0.03] px-5 py-4 text-left transition hover:border-cyan-200/20"
+            onClick={() => setDeferredExpanded((prev) => !prev)}
+            aria-expanded={deferredExpanded}
+          >
+            <div className="flex items-center gap-3">
+              <RotateCcw className="h-4 w-4 text-slate-400" />
+              <span className="text-sm font-medium text-slate-300">Deferred items</span>
+              <span className="rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-xs text-slate-400">
+                {deferredPriorities.length + deferredTasks.length}
+              </span>
+            </div>
+            <ChevronRight
+              className={cx(
+                "h-4 w-4 text-slate-500 transition-transform",
+                deferredExpanded && "rotate-90"
+              )}
+            />
+          </button>
+
+          {deferredExpanded && (
+            <Card className="mt-2 rounded-[28px] p-5 sm:p-6">
+              <div className="space-y-3">
+                {deferredPriorities.length > 0 && (
+                  <>
+                    <p className="text-xs uppercase tracking-[0.22em] text-dim">Deferred priorities</p>
+                    {deferredPriorities.map((priority) => (
+                      <div
+                        key={`dp-${priority.id}`}
+                        className="flex items-start justify-between gap-4 rounded-3xl border border-white/10 bg-white/[0.03] p-4"
+                      >
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-medium text-slate-300">{priority.title}</h3>
+                          {priority.detail && (
+                            <p className="mt-1 text-sm text-dim">{priority.detail}</p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={isPending}
+                          onClick={() => runAction(() => restoreTaskAction(priority.id, 'priority'))}
+                          aria-label={`Restore: ${priority.title}`}
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {deferredTasks.length > 0 && (
+                  <>
+                    <p className="mt-4 text-xs uppercase tracking-[0.22em] text-dim">Deferred quick tasks</p>
+                    {deferredTasks.map((task) => (
+                      <div
+                        key={`dt-${task.id}`}
+                        className="flex items-center justify-between gap-4 rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-3"
+                      >
+                        <span className="text-sm text-slate-300">{task.title}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={isPending}
+                          onClick={() => runAction(() => restoreTaskAction(task.id, 'quick_task'))}
+                          aria-label={`Restore: ${task.title}`}
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            </Card>
+          )}
+        </section>
+      )}
 
       <Modal
         open={isReflectionOpen}

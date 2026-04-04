@@ -139,6 +139,16 @@ function initializeDatabase(database: DatabaseSync) {
       last_shown_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS saved_stories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      url TEXT NOT NULL UNIQUE,
+      source TEXT NOT NULL,
+      category TEXT NOT NULL,
+      summary TEXT NOT NULL DEFAULT '',
+      saved_at TEXT NOT NULL
+    );
   `);
 }
 
@@ -424,6 +434,14 @@ export function deferTask(id: number, type: 'priority' | 'quick_task'): void {
   db.prepare(`UPDATE ${table} SET status = 'deferred' WHERE id = ?`).run(id);
 }
 
+export function restoreTask(id: number, type: 'priority' | 'quick_task'): void {
+  if (type !== 'priority' && type !== 'quick_task') {
+    throw new Error(`restoreTask: invalid type "${type}"`);
+  }
+  const table = type === 'priority' ? 'priorities' : 'quick_tasks';
+  db.prepare(`UPDATE ${table} SET status = 'active' WHERE id = ?`).run(id);
+}
+
 export function addFocusBlock(input: {
   label: string;
   startTime: string;
@@ -673,4 +691,37 @@ export function getSRItemWithContext(srItemId: number): {
     WHERE s.id = ?
   `).get(srItemId);
   return row ? (toPlainObject(row) as ReturnType<typeof getSRItemWithContext>) : null;
+}
+
+// --- Saved stories ---
+
+export interface SavedStory {
+  id: number;
+  title: string;
+  url: string;
+  source: string;
+  category: string;
+  summary: string;
+  savedAt: string;
+}
+
+export function getSavedStories(): SavedStory[] {
+  return toPlainObject(
+    db.prepare('SELECT id, title, url, source, category, summary, saved_at as savedAt FROM saved_stories ORDER BY saved_at DESC').all()
+  ) as SavedStory[];
+}
+
+export function saveStory(item: { title: string; url: string; source: string; category: string; summary: string }): void {
+  db.prepare(
+    'INSERT OR IGNORE INTO saved_stories (title, url, source, category, summary, saved_at) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(item.title, item.url, item.source, item.category, item.summary, nowIso());
+}
+
+export function unsaveStory(url: string): void {
+  db.prepare('DELETE FROM saved_stories WHERE url = ?').run(url);
+}
+
+export function isSaved(url: string): boolean {
+  const row = db.prepare('SELECT 1 FROM saved_stories WHERE url = ?').get(url);
+  return row != null;
 }

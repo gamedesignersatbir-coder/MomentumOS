@@ -82,7 +82,7 @@ export function TriageModal({ priorities, quickTasks, onClose }: Props) {
             Done
           </button>
           <p className="modal-footnote">
-            Deferred items are saved — not deleted. Find them in history.
+            Deferred items are saved — not deleted. Find them below the main view.
           </p>
         </div>
       </div>

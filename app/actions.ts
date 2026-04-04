@@ -11,6 +11,7 @@ import {
   addQuickTaskInbox,
   archivePriority,
   deferTask,
+  restoreTask,
   recordGreetingShown,
   saveReflection,
   seedTomorrowPriority,
@@ -144,6 +145,14 @@ export async function deferTaskAction(
   type: 'priority' | 'quick_task'
 ): Promise<void> {
   deferTask(id, type);
+  revalidatePath('/');
+}
+
+export async function restoreTaskAction(
+  id: number,
+  type: 'priority' | 'quick_task'
+): Promise<void> {
+  restoreTask(id, type);
   revalidatePath('/');
 }
 
