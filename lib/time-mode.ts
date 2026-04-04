@@ -48,6 +48,9 @@ export function getTimeMode(
   if (t < sadhana_morning_end) return 'quiet-morning';
 
   // Morning brief: sadhana ends → work officially starts (1 hr window, min 30 min)
+  // NOTE: morningBriefEnd must be < sadhana_afternoon_start for quiet-afternoon to be
+  // reachable. The default schedule satisfies this (09:00 < 14:00). Unusual schedules
+  // (very late work_start + early sadhana_afternoon_start) may skip quiet-afternoon.
   const morningBriefEnd = Math.max(sadhana_morning_end + 30, work_start + 60);
   if (t < morningBriefEnd) return 'morning-brief';
 

@@ -20,6 +20,7 @@ import {
   updateUserProfile,
 } from "@/lib/db";
 import { timeToMinutes } from '@/lib/curriculum-types';
+import { TIMEZONE_VALUES } from '@/lib/timezones';
 
 const prioritySchema = z.object({
   title: z.string().min(3).max(80),
@@ -191,6 +192,7 @@ const PROFILE_FIELD_LABELS: Record<string, string> = {
   sadhana_afternoon_end: 'Sadhana afternoon end',
   work_start: 'Work start',
   work_end: 'Work end',
+  timezone: 'Timezone',
 };
 
 function friendlyError(err: ZodError): string {
@@ -210,27 +212,7 @@ const profileSchema = z.object({
   sadhana_afternoon_end: z.string().min(1),
   work_start: z.string().min(1),
   work_end: z.string().min(1),
-  timezone: z.enum([
-    'Asia/Kolkata',
-    'America/New_York',
-    'America/Chicago',
-    'America/Denver',
-    'America/Los_Angeles',
-    'America/Vancouver',
-    'America/Toronto',
-    'America/Sao_Paulo',
-    'Europe/London',
-    'Europe/Paris',
-    'Europe/Amsterdam',
-    'Europe/Moscow',
-    'Asia/Dubai',
-    'Asia/Singapore',
-    'Asia/Tokyo',
-    'Asia/Seoul',
-    'Australia/Sydney',
-    'Pacific/Auckland',
-    'UTC',
-  ]).default('Asia/Kolkata'),
+  timezone: z.enum(TIMEZONE_VALUES).default('Asia/Kolkata'),
 });
 
 export async function updateProfileAction(formData: FormData): Promise<
