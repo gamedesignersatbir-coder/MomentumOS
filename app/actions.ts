@@ -210,13 +210,32 @@ const profileSchema = z.object({
   sadhana_afternoon_end: z.string().min(1),
   work_start: z.string().min(1),
   work_end: z.string().min(1),
+  timezone: z.enum([
+    'Asia/Kolkata',
+    'America/New_York',
+    'America/Chicago',
+    'America/Denver',
+    'America/Los_Angeles',
+    'America/Vancouver',
+    'America/Toronto',
+    'America/Sao_Paulo',
+    'Europe/London',
+    'Europe/Paris',
+    'Europe/Amsterdam',
+    'Europe/Moscow',
+    'Asia/Dubai',
+    'Asia/Singapore',
+    'Asia/Tokyo',
+    'Asia/Seoul',
+    'Australia/Sydney',
+    'Pacific/Auckland',
+    'UTC',
+  ]).default('Asia/Kolkata'),
 });
 
 export async function updateProfileAction(formData: FormData): Promise<
   { ok: true; message: string } | { ok: false; message: string }
 > {
-  const timezone = (formData.get('timezone') as string) || 'Asia/Kolkata';
-
   const result = profileSchema.safeParse({
     display_name: field(formData, 'display_name'),
     about_me: field(formData, 'about_me'),
@@ -226,6 +245,7 @@ export async function updateProfileAction(formData: FormData): Promise<
     sadhana_afternoon_end: field(formData, 'sadhana_afternoon_end'),
     work_start: field(formData, 'work_start'),
     work_end: field(formData, 'work_end'),
+    timezone: field(formData, 'timezone'),
   });
   if (!result.success) return { ok: false, message: friendlyError(result.error) };
 
@@ -239,7 +259,7 @@ export async function updateProfileAction(formData: FormData): Promise<
     sadhana_afternoon_end: timeToMinutes(d.sadhana_afternoon_end),
     work_start: timeToMinutes(d.work_start),
     work_end: timeToMinutes(d.work_end),
-    timezone,
+    timezone: d.timezone,
   });
   revalidatePath('/profile');
   revalidatePath('/');
