@@ -208,7 +208,7 @@ export function MomentumDashboard({
             <div className="flex flex-wrap gap-3 text-sm text-slate-200/80">
               <span className="rounded-full border border-white/10 px-3 py-1">Today {todayLabel}</span>
               <span className="rounded-full border border-white/10 px-3 py-1">
-                {data.summary.completedPriorities}/{data.priorities.length || 1} priorities complete
+                {data.summary.completedPriorities}/{displayPriorities.length || 1} priorities complete
               </span>
               <span className="rounded-full border border-white/10 px-3 py-1">
                 {data.summary.learningMinutesWeek} learning minutes this week

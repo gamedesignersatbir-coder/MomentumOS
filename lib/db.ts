@@ -302,6 +302,7 @@ export function getDashboardData(): DashboardData {
   ).map((prompt) => ({ ...prompt, tags: prompt.tags.split(",") }));
 
   const completedPriorities = priorities.filter((item) => item.status === "done").length;
+  const activePriorityCount = priorities.filter((item) => item.status !== "deferred").length;
   const completedFocusBlocks = focusBlocks.filter((item) => item.status === "done").length;
   const completedQuickTasks = quickTasks.filter((item) => item.status === "done").length;
   const learningMinutesWeek = (
@@ -378,7 +379,7 @@ export function getDashboardData(): DashboardData {
       momentumScore: Math.min(
         100,
         Math.round(
-          ((completedPriorities / Math.max(priorities.length, 1)) * 45 +
+          ((completedPriorities / Math.max(activePriorityCount, 1)) * 45 +
             (completedFocusBlocks / Math.max(focusBlocks.length, 1)) * 25 +
             (completedQuickTasks / Math.max(quickTasks.length, 1)) * 15 +
             Math.min(learningMinutesWeek, 90) * 0.17)
