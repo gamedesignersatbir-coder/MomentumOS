@@ -215,6 +215,8 @@ const profileSchema = z.object({
 export async function updateProfileAction(formData: FormData): Promise<
   { ok: true; message: string } | { ok: false; message: string }
 > {
+  const timezone = (formData.get('timezone') as string) || 'Asia/Kolkata';
+
   const result = profileSchema.safeParse({
     display_name: field(formData, 'display_name'),
     about_me: field(formData, 'about_me'),
@@ -237,6 +239,7 @@ export async function updateProfileAction(formData: FormData): Promise<
     sadhana_afternoon_end: timeToMinutes(d.sadhana_afternoon_end),
     work_start: timeToMinutes(d.work_start),
     work_end: timeToMinutes(d.work_end),
+    timezone,
   });
   revalidatePath('/profile');
   revalidatePath('/');
