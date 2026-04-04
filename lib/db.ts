@@ -540,6 +540,17 @@ export function getRecentGreetingIds(withinDays = 30): string[] {
   return rows.map((r) => r.message_id);
 }
 
+export function isUserAbsent(absentAfterDays = 3): boolean {
+  const { cnt } = db.prepare(
+    'SELECT COUNT(*) as cnt FROM greeting_history'
+  ).get() as { cnt: number };
+  if (cnt === 0) return false; // first ever visit — not absent
+  const { cnt: recent } = db.prepare(
+    `SELECT COUNT(*) as cnt FROM greeting_history WHERE shown_at >= datetime('now', '-' || ? || ' days')`
+  ).get(absentAfterDays) as { cnt: number };
+  return recent === 0;
+}
+
 export function recordGreetingShown(messageId: string): void {
   db.prepare(
     'INSERT INTO greeting_history (message_id) VALUES (?)'

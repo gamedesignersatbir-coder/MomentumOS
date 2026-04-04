@@ -1,4 +1,4 @@
-import { getDashboardData, getUserProfile, getRecentGreetingIds, getSRItemsDueCount } from '@/lib/db';
+import { getDashboardData, getUserProfile, getRecentGreetingIds, getSRItemsDueCount, isUserAbsent } from '@/lib/db';
 import { getTimeMode } from '@/lib/time-mode';
 import { selectGreeting } from '@/lib/greeting';
 import MomentumDashboard from '@/components/momentum-dashboard';
@@ -39,11 +39,13 @@ export default function Home() {
     : activeCount > 5 ? 'full'
     : 'normal';
 
+  const isAbsent = isUserAbsent(3);
+
   const greeting = selectGreeting({
     mode,
     loadLevel,
     dayOfWeek: now.getDay(),
-    isAbsent: false, // TODO Phase 5: detect from last_opened timestamp
+    isAbsent,
     recentlyShownIds: recentIds,
   });
 
