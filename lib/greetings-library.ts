@@ -497,36 +497,43 @@ export const GREETINGS: GreetingMessage[] = [
   {
     id: 'monday-1',
     text: 'Monday. Full of potential and mild dread, in roughly equal measure.',
+    mode: 'morning-brief',
     dayOfWeek: 1,
   },
   {
     id: 'tuesday-1',
     text: 'Tuesday. The week is in full motion now.',
+    mode: 'morning-brief',
     dayOfWeek: 2,
   },
   {
     id: 'wednesday-1',
     text: "Wednesday. Worth a quick check on whether you're still going the right direction.",
+    mode: 'morning-brief',
     dayOfWeek: 3,
   },
   {
     id: 'thursday-1',
     text: 'Thursday. Close enough to Friday to be optimistic about it.',
+    mode: 'morning-brief',
     dayOfWeek: 4,
   },
   {
     id: 'friday-1',
     text: 'Friday. The week wants to know what it earned.',
+    mode: 'morning-brief',
     dayOfWeek: 5,
   },
   {
     id: 'saturday-1',
     text: 'Saturday. The calendar is politely quiet.',
+    mode: 'morning-brief',
     dayOfWeek: 6,
   },
   {
     id: 'sunday-1',
     text: 'Sunday. The week is approaching. It can wait a few more hours.',
+    mode: 'morning-brief',
     dayOfWeek: 0,
   },
 
