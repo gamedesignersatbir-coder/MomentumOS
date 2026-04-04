@@ -508,9 +508,9 @@ export function getResurfaceableReflection(): ResurfacedReflection | null {
       CAST(julianday('now') - julianday(created_at) AS INTEGER) as days_ago
     FROM reflections
     WHERE resurfaced_at IS NULL AND (
-      created_at BETWEEN datetime('now', '-8 days') AND datetime('now', '-6 days')
-      OR created_at BETWEEN datetime('now', '-32 days') AND datetime('now', '-28 days')
-      OR created_at BETWEEN datetime('now', '-93 days') AND datetime('now', '-87 days')
+      created_at BETWEEN date('now', '-8 days') AND date('now', '-6 days')
+      OR created_at BETWEEN date('now', '-32 days') AND date('now', '-28 days')
+      OR created_at BETWEEN date('now', '-93 days') AND date('now', '-87 days')
     )
     ORDER BY created_at DESC
     LIMIT 1
