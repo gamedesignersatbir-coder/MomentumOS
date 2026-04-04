@@ -230,4 +230,325 @@ export const GREETINGS: GreetingMessage[] = [
     id: 'generic-9',
     text: "The sadhana is done. The mind is clear. Now — what deserves that clarity?",
   },
+
+  // ── quiet-morning additions ──────────────────────────────────
+  {
+    id: 'quiet-morning-3',
+    text: 'Morning practice. The rest of the day can wait.',
+    mode: 'quiet-morning',
+  },
+  {
+    id: 'quiet-morning-4',
+    text: 'This hour belongs to you. Not the inbox.',
+    mode: 'quiet-morning',
+  },
+  {
+    id: 'quiet-morning-5',
+    text: 'Before the day begins, a moment of stillness. Good.',
+    mode: 'quiet-morning',
+  },
+
+  // ── quiet-afternoon additions ─────────────────────────────────
+  {
+    id: 'quiet-afternoon-3',
+    text: "The afternoon pause. Let the morning's work settle.",
+    mode: 'quiet-afternoon',
+  },
+  {
+    id: 'quiet-afternoon-4',
+    text: 'Sadhana time. The screen can wait.',
+    mode: 'quiet-afternoon',
+  },
+  {
+    id: 'quiet-afternoon-5',
+    text: 'A second stillness. The day is better for it.',
+    mode: 'quiet-afternoon',
+  },
+
+  // ── morning-brief additions ───────────────────────────────────
+  {
+    id: 'morning-brief-6',
+    text: "The day's shape is still soft. Good time to set it.",
+    mode: 'morning-brief',
+  },
+  {
+    id: 'morning-brief-7',
+    text: "Eight hours is enough — if you don't spend them deciding what to do.",
+    mode: 'morning-brief',
+  },
+  {
+    id: 'morning-brief-8',
+    text: 'Good morning. The calendar has opinions. You have priorities. Let the better argument win.',
+    mode: 'morning-brief',
+  },
+  {
+    id: 'morning-brief-9',
+    text: "Start before you're ready. You never will be.",
+    mode: 'morning-brief',
+  },
+  {
+    id: 'morning-brief-10',
+    text: 'The best mornings begin with one clear decision.',
+    mode: 'morning-brief',
+  },
+  {
+    id: 'morning-brief-11',
+    text: 'Morning. The cursor is ready. Are you?',
+    mode: 'morning-brief',
+  },
+
+  // ── focus additions ───────────────────────────────────────────
+  {
+    id: 'focus-4',
+    text: "The work doesn't need you to feel ready. Just to begin.",
+    mode: 'focus',
+  },
+  {
+    id: 'focus-5',
+    text: "You've cleared the morning. Now it's just you and the work.",
+    mode: 'focus',
+  },
+  {
+    id: 'focus-6',
+    text: 'Somewhere between starting and finishing, momentum finds you.',
+    mode: 'focus',
+  },
+  {
+    id: 'focus-7',
+    text: 'Nothing complicated. Just this next thing, done well.',
+    mode: 'focus',
+  },
+  {
+    id: 'focus-8',
+    text: "The best work doesn't announce itself. It gets done.",
+    mode: 'focus',
+  },
+  {
+    id: 'focus-9',
+    text: 'Two hours of real work outweighs a day of half-attention.',
+    mode: 'focus',
+  },
+
+  // ── lunch additions ───────────────────────────────────────────
+  {
+    id: 'lunch-3',
+    text: 'Lunch is not a desk activity.',
+    mode: 'lunch',
+  },
+  {
+    id: 'lunch-4',
+    text: 'Feed yourself properly. The afternoon will thank you.',
+    mode: 'lunch',
+  },
+  {
+    id: 'lunch-5',
+    text: 'The meal deserves your full attention.',
+    mode: 'lunch',
+  },
+
+  // ── afternoon additions ───────────────────────────────────────
+  {
+    id: 'afternoon-4',
+    text: 'The morning built it. The afternoon can finish it.',
+    mode: 'afternoon',
+  },
+  {
+    id: 'afternoon-5',
+    text: 'Mid-afternoon clarity: rare, useful, worth catching.',
+    mode: 'afternoon',
+  },
+  {
+    id: 'afternoon-6',
+    text: 'The afternoon shift is underrated. Quieter. More honest.',
+    mode: 'afternoon',
+  },
+  {
+    id: 'afternoon-7',
+    text: "You've made it past lunch. That's worth something.",
+    mode: 'afternoon',
+  },
+  {
+    id: 'afternoon-8',
+    text: "A few good hours remain. They don't expire if you use them.",
+    mode: 'afternoon',
+  },
+
+  // ── transition mode (new) ─────────────────────────────────────
+  {
+    id: 'transition-1',
+    text: 'The work day is wrapping up. Let it.',
+    mode: 'transition',
+  },
+  {
+    id: 'transition-2',
+    text: 'Time to close the loops. Or consciously leave them open.',
+    mode: 'transition',
+  },
+  {
+    id: 'transition-3',
+    text: 'The next version of this problem can wait until tomorrow.',
+    mode: 'transition',
+  },
+
+  // ── evening additions ─────────────────────────────────────────
+  {
+    id: 'evening-4',
+    text: "The day's work is mostly done. Let it settle.",
+    mode: 'evening',
+  },
+  {
+    id: 'evening-5',
+    text: 'Evening. The pressure drops. What was worth it?',
+    mode: 'evening',
+  },
+  {
+    id: 'evening-6',
+    text: 'Dinner deserves your full attention.',
+    mode: 'evening',
+  },
+  {
+    id: 'evening-7',
+    text: "The work will still be there tomorrow. Tonight needn't be.",
+    mode: 'evening',
+  },
+  {
+    id: 'evening-8',
+    text: 'Good evenings are quiet ones.',
+    mode: 'evening',
+  },
+  {
+    id: 'evening-9',
+    text: 'Evening mode. The urgent things are, mostly, done.',
+    mode: 'evening',
+  },
+
+  // ── reflection additions ──────────────────────────────────────
+  {
+    id: 'reflection-4',
+    text: 'Not every day needs a lesson. But they all offer one.',
+    mode: 'reflection',
+  },
+  {
+    id: 'reflection-5',
+    text: 'What happened today that surprised you?',
+    mode: 'reflection',
+  },
+  {
+    id: 'reflection-6',
+    text: 'The day is requesting a summary. Keep it honest.',
+    mode: 'reflection',
+  },
+  {
+    id: 'reflection-7',
+    text: 'Write it down before sleep rewrites it.',
+    mode: 'reflection',
+  },
+  {
+    id: 'reflection-8',
+    text: 'A few minutes of reflection is worth an hour of regret.',
+    mode: 'reflection',
+  },
+
+  // ── absent additions ──────────────────────────────────────────
+  {
+    id: 'absent-3',
+    text: "You've been away. Things waited patiently.",
+    isAbsent: true,
+  },
+  {
+    id: 'absent-4',
+    text: 'A few days off. The work survived.',
+    isAbsent: true,
+  },
+  {
+    id: 'absent-5',
+    text: "You're back. Everything held together without you, as it should.",
+    isAbsent: true,
+  },
+  {
+    id: 'absent-6',
+    text: 'Welcome back. Pick up where you left off — or start fresh. Either works.',
+    isAbsent: true,
+  },
+
+  // ── load-level additions ──────────────────────────────────────
+  {
+    id: 'load-empty-3',
+    text: 'The board is clear. A rare condition. Protect it.',
+    loadLevel: 'empty',
+  },
+  {
+    id: 'load-empty-4',
+    text: "Nothing urgent. Use it or enjoy it — both are valid.",
+    loadLevel: 'empty',
+  },
+  {
+    id: 'load-overloaded-3',
+    text: "That's a lot. Worth deciding what gets today and what gets later.",
+    loadLevel: 'overloaded',
+  },
+  {
+    id: 'load-overloaded-4',
+    text: 'The pile has gotten ambitious. Time for a reckoning.',
+    loadLevel: 'overloaded',
+  },
+
+  // ── day-of-week specific ──────────────────────────────────────
+  {
+    id: 'monday-1',
+    text: 'Monday. Full of potential and mild dread, in roughly equal measure.',
+    dayOfWeek: 1,
+  },
+  {
+    id: 'tuesday-1',
+    text: 'Tuesday. The week is in full motion now.',
+    dayOfWeek: 2,
+  },
+  {
+    id: 'wednesday-1',
+    text: "Wednesday. Worth a quick check on whether you're still going the right direction.",
+    dayOfWeek: 3,
+  },
+  {
+    id: 'thursday-1',
+    text: 'Thursday. Close enough to Friday to be optimistic about it.',
+    dayOfWeek: 4,
+  },
+  {
+    id: 'friday-1',
+    text: 'Friday. The week wants to know what it earned.',
+    dayOfWeek: 5,
+  },
+  {
+    id: 'saturday-1',
+    text: 'Saturday. The calendar is politely quiet.',
+    dayOfWeek: 6,
+  },
+  {
+    id: 'sunday-1',
+    text: 'Sunday. The week is approaching. It can wait a few more hours.',
+    dayOfWeek: 0,
+  },
+
+  // ── generic additions ─────────────────────────────────────────
+  {
+    id: 'generic-10',
+    text: 'Hello, Satbir.',
+  },
+  {
+    id: 'generic-11',
+    text: 'Here you are.',
+  },
+  {
+    id: 'generic-12',
+    text: 'Ready when you are.',
+  },
+  {
+    id: 'generic-13',
+    text: 'The day is waiting for instructions.',
+  },
+  {
+    id: 'generic-14',
+    text: "What needs doing? Let's find out.",
+  },
 ];
