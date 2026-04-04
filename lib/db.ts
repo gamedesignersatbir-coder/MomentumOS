@@ -541,10 +541,15 @@ export function getRecentGreetingIds(withinDays = 30): string[] {
 }
 
 export function isUserAbsent(absentAfterDays = 3): boolean {
+  if (!Number.isInteger(absentAfterDays) || absentAfterDays < 1) {
+    throw new Error(`isUserAbsent: absentAfterDays must be a positive integer, got ${absentAfterDays}`);
+  }
   const { cnt } = db.prepare(
     'SELECT COUNT(*) as cnt FROM greeting_history'
   ).get() as { cnt: number };
   if (cnt === 0) return false; // first ever visit — not absent
+  // shown_at is stored as UTC via datetime('now') — consistent with this comparison.
+  // Uses >= so a session recorded exactly N days ago does NOT count as absent (correct).
   const { cnt: recent } = db.prepare(
     `SELECT COUNT(*) as cnt FROM greeting_history WHERE shown_at >= datetime('now', '-' || ? || ' days')`
   ).get(absentAfterDays) as { cnt: number };
