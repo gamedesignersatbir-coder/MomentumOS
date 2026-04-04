@@ -20,7 +20,7 @@ export interface UserSchedule {
   work_end: number;
 }
 
-const DEFAULT_SCHEDULE: UserSchedule = {
+export const DEFAULT_SCHEDULE: UserSchedule = {
   sadhana_morning_end: 480,      // 08:00
   sadhana_afternoon_start: 840,  // 14:00
   sadhana_afternoon_end: 900,    // 15:00
