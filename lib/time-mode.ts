@@ -1,29 +1,77 @@
 // lib/time-mode.ts
 
 export type TimeMode =
-  | 'quiet-morning'    // pre-8am   — sadhana
-  | 'morning-brief'   // 8:00–8:59 — day starts
-  | 'focus'           // 9:00–13:59 — deep work
-  | 'quiet-afternoon' // 14:00–14:59 — sadhana
-  | 'lunch'           // 15:00–15:29 — lunch
-  | 'afternoon'       // 15:30–18:29 — lighter work
-  | 'transition'      // 18:30–18:59 — commute home
-  | 'evening'         // 19:00–20:59 — family + news
-  | 'reflection'      // 21:00+      — nightly reflection
+  | 'quiet-morning'    // pre work-start — morning sadhana
+  | 'morning-brief'   // work-start to work-start+60
+  | 'focus'           // morning-brief end to afternoon sadhana start
+  | 'quiet-afternoon' // afternoon sadhana window
+  | 'lunch'           // sadhana end to sadhana end+30
+  | 'afternoon'       // lunch end to work end
+  | 'transition'      // work end to work end+30
+  | 'evening'         // transition end to reflection start (work end+90)
+  | 'reflection'      // after evening
 
-export function getTimeMode(date: Date = new Date()): TimeMode {
+export interface UserSchedule {
+  /** minutes since midnight, e.g. 480 = 08:00 */
+  sadhana_morning_end: number;
+  sadhana_afternoon_start: number;
+  sadhana_afternoon_end: number;
+  work_start: number;
+  work_end: number;
+}
+
+const DEFAULT_SCHEDULE: UserSchedule = {
+  sadhana_morning_end: 480,      // 08:00
+  sadhana_afternoon_start: 840,  // 14:00
+  sadhana_afternoon_end: 900,    // 15:00
+  work_start: 480,               // 08:00
+  work_end: 1110,                // 18:30
+};
+
+export function getTimeMode(
+  date: Date = new Date(),
+  schedule: UserSchedule = DEFAULT_SCHEDULE
+): TimeMode {
   const h = date.getHours();
   const m = date.getMinutes();
-  const t = h * 60 + m; // total minutes since midnight
+  const t = h * 60 + m;
 
-  if (t < 8 * 60)           return 'quiet-morning';
-  if (t < 9 * 60)           return 'morning-brief';
-  if (t < 14 * 60)          return 'focus';
-  if (t < 15 * 60)          return 'quiet-afternoon';
-  if (t < 15 * 60 + 30)     return 'lunch';
-  if (t < 18 * 60 + 30)     return 'afternoon';
-  if (t < 19 * 60)          return 'transition';
-  if (t < 21 * 60)          return 'evening';
+  const {
+    sadhana_morning_end,
+    sadhana_afternoon_start,
+    sadhana_afternoon_end,
+    work_start,
+    work_end,
+  } = schedule;
+
+  // Morning sadhana: midnight → morning sadhana ends
+  if (t < sadhana_morning_end) return 'quiet-morning';
+
+  // Morning brief: sadhana ends → work officially starts (1 hr window, min 30 min)
+  const morningBriefEnd = Math.max(sadhana_morning_end + 30, work_start + 60);
+  if (t < morningBriefEnd) return 'morning-brief';
+
+  // Focus: morning brief ends → afternoon sadhana starts
+  if (t < sadhana_afternoon_start) return 'focus';
+
+  // Afternoon sadhana
+  if (t < sadhana_afternoon_end) return 'quiet-afternoon';
+
+  // Lunch: sadhana ends → sadhana ends + 30 min
+  const lunchEnd = sadhana_afternoon_end + 30;
+  if (t < lunchEnd) return 'lunch';
+
+  // Afternoon work: lunch ends → work day ends
+  if (t < work_end) return 'afternoon';
+
+  // Transition: work ends → work ends + 30 min
+  const transitionEnd = work_end + 30;
+  if (t < transitionEnd) return 'transition';
+
+  // Evening: transition → work end + 90 min (≈ 2 hrs after end of day)
+  const eveningEnd = work_end + 90;
+  if (t < eveningEnd) return 'evening';
+
   return 'reflection';
 }
 
