@@ -11,7 +11,22 @@ export default function Home() {
   const recentIds = getRecentGreetingIds(30);
   const srDueCount = getSRItemsDueCount();
 
-  const mode = getTimeMode(); // uses server time — acceptable for IST
+  const schedule = profile
+    ? {
+        sadhana_morning_end: profile.sadhana_morning_end,
+        sadhana_afternoon_start: profile.sadhana_afternoon_start,
+        sadhana_afternoon_end: profile.sadhana_afternoon_end,
+        work_start: profile.work_start,
+        work_end: profile.work_end,
+      }
+    : undefined;
+
+  // Use stored timezone for server-side time calculation
+  const now = profile?.timezone
+    ? new Date(new Date().toLocaleString('en-US', { timeZone: profile.timezone }))
+    : new Date();
+
+  const mode = getTimeMode(now, schedule);
   // Note: this is an intentionally synchronous Server Component — all DB calls
   // use DatabaseSync from node:sqlite. Do NOT add async/await here.
   const activeCount =
