@@ -439,6 +439,9 @@ export function getDashboardData(): DashboardData {
     resurfacedReflection: getResurfaceableReflection(),
     milestone,
     monthlyNarrative: getMonthlyNarrativeData(),
+    todayReflectionExists: !!(db
+      .prepare("SELECT 1 FROM reflections WHERE created_at = ? LIMIT 1")
+      .get(dayKey(new Date()))),
   };
 }
 
@@ -447,7 +450,7 @@ export function addPriority(input: { title: string; detail: string }) {
     db.prepare("SELECT COALESCE(MAX(rank), 0) as maxRank FROM priorities").get() as { maxRank: number }
   ).maxRank + 1;
   db.prepare("INSERT INTO priorities (title, detail, status, rank, created_at) VALUES (?, ?, 'active', ?, ?)")
-    .run(input.title, input.detail, Math.min(rank, 3), dayKey(new Date()));
+    .run(input.title, input.detail, rank, dayKey(new Date()));
 }
 
 export function togglePriority(id: number) {
@@ -598,13 +601,20 @@ export function archivePriority(id: number): void {
 }
 
 export function seedTomorrowPriority(title: string): void {
-  db.prepare(
-    `UPDATE priorities SET rank = rank + 1 WHERE status = 'active'`
-  ).run();
-  db.prepare(`
-    INSERT INTO priorities (title, detail, status, rank, created_at)
-    VALUES (?, '', 'active', 1, ?)
-  `).run(title.trim(), dayKey(new Date()));
+  db.exec('BEGIN');
+  try {
+    db.prepare(
+      `UPDATE priorities SET rank = rank + 1 WHERE status = 'active'`
+    ).run();
+    db.prepare(`
+      INSERT INTO priorities (title, detail, status, rank, created_at)
+      VALUES (?, '', 'active', 1, ?)
+    `).run(title.trim(), dayKey(new Date()));
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
 }
 
 // --- Greeting History ---
@@ -676,9 +686,16 @@ export function saveCurriculum(input: {
 }
 
 export function deleteCurriculum(id: number): void {
-  db.prepare('DELETE FROM sr_items WHERE item_type = ? AND item_id IN (SELECT id FROM learning_sessions WHERE curriculum_id = ?)').run('learning_session', id);
-  db.prepare('DELETE FROM learning_sessions WHERE curriculum_id = ?').run(id);
-  db.prepare('DELETE FROM curricula WHERE id = ?').run(id);
+  db.exec('BEGIN');
+  try {
+    db.prepare('DELETE FROM sr_items WHERE item_type = ? AND item_id IN (SELECT id FROM learning_sessions WHERE curriculum_id = ?)').run('learning_session', id);
+    db.prepare('DELETE FROM learning_sessions WHERE curriculum_id = ?').run(id);
+    db.prepare('DELETE FROM curricula WHERE id = ?').run(id);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
 }
 
 export function getCurriculumSessionCount(curriculumId: number): number {
