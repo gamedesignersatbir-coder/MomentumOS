@@ -145,7 +145,7 @@ export default function PulseBottomSheetTrending({ items, isOpen, onClose, onTop
       {/* Overlay */}
       <div className="fixed inset-0 z-40 bg-black/50" onClick={onClose} />
       {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface-raised border-t border-border rounded-t-2xl max-h-[65vh] overflow-y-auto">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface-raised border-t border-border rounded-t-2xl max-h-[65vh] overflow-y-auto overscroll-contain">
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-border rounded-full" />
