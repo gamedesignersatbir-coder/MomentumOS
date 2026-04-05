@@ -12,9 +12,11 @@ import {
   archivePriority,
   deferTask,
   getActivitySummary,
+  getMonthlyActivitySummary,
   markReflectionResurfaced,
   restoreTask,
   recordGreetingShown,
+  saveMonthlyNarrative,
   saveReflection,
   saveMilestoneNarrative,
   seedTomorrowPriority,
@@ -25,7 +27,7 @@ import {
 } from "@/lib/db";
 import { timeToMinutes } from '@/lib/curriculum-types';
 import { TIMEZONE_VALUES } from '@/lib/timezones';
-import { chatCompletion, buildMilestonePrompt } from '@/lib/openrouter';
+import { chatCompletion, buildMilestonePrompt, buildMonthlyNarrativePrompt } from '@/lib/openrouter';
 
 const prioritySchema = z.object({
   title: z.string().min(3).max(80),
@@ -279,5 +281,24 @@ export async function generateMilestoneNarrativeAction(
   } catch (err) {
     console.error('[generateMilestoneNarrativeAction]', err);
     return { ok: false, message: "Couldn't generate narrative — check your connection and try again." };
+  }
+}
+
+export async function generateMonthlyNarrativeAction(
+  year: number,
+  month: number
+): Promise<{ ok: boolean; narrative?: string; message?: string }> {
+  try {
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    const summary = getMonthlyActivitySummary(prevYear, prevMonth);
+    const messages = buildMonthlyNarrativePrompt(year, month, summary);
+    const narrative = await chatCompletion(messages);
+    saveMonthlyNarrative(year, month, narrative);
+    revalidatePath('/');
+    return { ok: true, narrative };
+  } catch (err) {
+    console.error('[generateMonthlyNarrativeAction]', err);
+    return { ok: false, message: "Couldn't generate monthly narrative — check your connection and try again." };
   }
 }

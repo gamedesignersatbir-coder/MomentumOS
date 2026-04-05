@@ -226,6 +226,34 @@ export function buildMilestonePrompt(
   ];
 }
 
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+export function buildMonthlyNarrativePrompt(
+  year: number,
+  month: number,
+  summary: {
+    completedTasks: number;
+    totalSessions: number;
+    domainsStudied: string[];
+    reflectionCount: number;
+    learningMinutes: number;
+  }
+): OpenRouterMessage[] {
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const monthName = MONTH_NAMES[prevMonth - 1];
+  return [
+    {
+      role: 'system',
+      content: `You are writing a monthly personal narrative for Satbir's private life OS (MomentumOS). He is a game designer, meditator, and curious technologist. Write in second person ("You've..."). Warm and specific. Terry Pratchett-adjacent wit — honest, direct, occasionally wry. No generic encouragement. Be specific to what he actually did. 80–120 words, flowing prose, no bullet points.`,
+    },
+    {
+      role: 'user',
+      content: `Monthly review: ${monthName} ${prevYear}.\nActivity:\n- Priorities completed: ${summary.completedTasks}\n- Learning sessions finished: ${summary.totalSessions}\n- Domains studied: ${summary.domainsStudied.join(', ') || 'none recorded'}\n- Reflections written: ${summary.reflectionCount}\n- Learning minutes logged: ${summary.learningMinutes}\n\nWrite a brief monthly narrative acknowledging what was built in ${monthName} and naming any patterns you notice.`,
+    },
+  ];
+}
+
 /** Build the module orientation (intro) message. */
 export function buildModuleIntroPrompt(input: {
   curriculumTitle: string;
