@@ -4,7 +4,7 @@ import path from "node:path";
 import { format, subDays } from "date-fns";
 
 import { buildNextDaySuggestion } from "@/lib/reflection";
-import type { DashboardData, ResurfacedReflection, UserProfile } from "@/lib/types";
+import type { DashboardData, MilestoneData, ResurfacedReflection, UserProfile } from "@/lib/types";
 
 const databasePath = path.join(process.cwd(), "momentum-os.db");
 
@@ -157,6 +157,14 @@ function initializeDatabase(database: DatabaseSync) {
       summary TEXT NOT NULL DEFAULT '',
       saved_at TEXT NOT NULL
     );
+  `);
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS milestones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      day_number INTEGER NOT NULL UNIQUE,
+      narrative_text TEXT NOT NULL,
+      generated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
   `);
 }
 
@@ -371,6 +379,12 @@ export function getDashboardData(): DashboardData {
     .prepare("SELECT suggestion FROM reflections ORDER BY id DESC LIMIT 1")
     .get() as { suggestion?: string } | undefined;
 
+  const daysSinceStart = getDaysSinceStart();
+  const milestoneDay = daysSinceStart === 30 ? 30 : daysSinceStart === 100 ? 100 : null;
+  const milestone: MilestoneData | null = milestoneDay
+    ? { day: milestoneDay as 30 | 100, narrative: getMilestoneNarrative(milestoneDay) }
+    : null;
+
   return {
     priorities,
     focusBlocks,
@@ -399,6 +413,7 @@ export function getDashboardData(): DashboardData {
       learningConfidenceAverage: Number.isFinite(confidenceAverage) ? Number(confidenceAverage.toFixed(1)) : 0
     },
     resurfacedReflection: getResurfaceableReflection(),
+    milestone,
   };
 }
 
@@ -772,4 +787,54 @@ export function unsaveStory(url: string): void {
 export function isSaved(url: string): boolean {
   const row = db.prepare('SELECT 1 FROM saved_stories WHERE url = ?').get(url);
   return row != null;
+}
+
+// --- Milestone functions ---
+
+export function getDaysSinceStart(): number | null {
+  const row = db.prepare(
+    `SELECT MIN(shown_at) as first_day FROM greeting_history`
+  ).get() as { first_day: string | null };
+  if (!row.first_day) return null;
+  const diffMs = Date.now() - new Date(row.first_day).getTime();
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+}
+
+export function getMilestoneNarrative(day: number): string | null {
+  const row = db.prepare(
+    `SELECT narrative_text FROM milestones WHERE day_number = ?`
+  ).get(day) as { narrative_text: string } | undefined;
+  return row?.narrative_text ?? null;
+}
+
+export function saveMilestoneNarrative(day: number, text: string): void {
+  db.prepare(
+    `INSERT OR REPLACE INTO milestones (day_number, narrative_text, generated_at) VALUES (?, ?, datetime('now'))`
+  ).run(day, text);
+}
+
+export function getActivitySummary(): {
+  completedTasks: number;
+  totalSessions: number;
+  domainsStudied: string[];
+  reflectionCount: number;
+} {
+  const { cnt: completedTasks } = db.prepare(
+    `SELECT COUNT(*) as cnt FROM priorities WHERE status = 'done'`
+  ).get() as { cnt: number };
+  const { cnt: totalSessions } = db.prepare(
+    `SELECT COUNT(*) as cnt FROM learning_sessions WHERE completed_at IS NOT NULL`
+  ).get() as { cnt: number };
+  const domains = db.prepare(
+    `SELECT DISTINCT domain FROM curricula`
+  ).all() as { domain: string }[];
+  const { cnt: reflectionCount } = db.prepare(
+    `SELECT COUNT(*) as cnt FROM reflections`
+  ).get() as { cnt: number };
+  return {
+    completedTasks,
+    totalSessions,
+    domainsStudied: domains.map(d => d.domain),
+    reflectionCount,
+  };
 }

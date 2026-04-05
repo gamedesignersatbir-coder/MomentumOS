@@ -1,3 +1,8 @@
+export interface MilestoneData {
+  day: 30 | 100;
+  narrative: string | null; // null = not yet generated
+}
+
 export interface ResurfacedReflection {
   id: number;
   energy_win: string;
@@ -62,6 +67,7 @@ export type DashboardData = {
     learningConfidenceAverage: number;
   };
   resurfacedReflection: ResurfacedReflection | null;
+  milestone: MilestoneData | null;
 };
 
 export interface UserProfile {

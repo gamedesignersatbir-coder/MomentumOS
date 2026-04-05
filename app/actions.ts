@@ -11,10 +11,12 @@ import {
   addQuickTaskInbox,
   archivePriority,
   deferTask,
+  getActivitySummary,
   markReflectionResurfaced,
   restoreTask,
   recordGreetingShown,
   saveReflection,
+  saveMilestoneNarrative,
   seedTomorrowPriority,
   toggleFocusBlock,
   togglePriority,
@@ -23,6 +25,7 @@ import {
 } from "@/lib/db";
 import { timeToMinutes } from '@/lib/curriculum-types';
 import { TIMEZONE_VALUES } from '@/lib/timezones';
+import { chatCompletion, buildMilestonePrompt } from '@/lib/openrouter';
 
 const prioritySchema = z.object({
   title: z.string().min(3).max(80),
@@ -261,4 +264,19 @@ export async function updateProfileAction(formData: FormData): Promise<
   revalidatePath('/profile');
   revalidatePath('/');
   return { ok: true, message: 'Profile saved.' };
+}
+
+export async function generateMilestoneNarrativeAction(
+  day: 30 | 100
+): Promise<{ ok: boolean; narrative?: string; message?: string }> {
+  try {
+    const summary = getActivitySummary();
+    const messages = buildMilestonePrompt(day, summary);
+    const narrative = await chatCompletion(messages);
+    saveMilestoneNarrative(day, narrative);
+    revalidatePath('/');
+    return { ok: true, narrative };
+  } catch {
+    return { ok: false, message: "Couldn't generate narrative — check your connection and try again." };
+  }
 }

@@ -204,6 +204,28 @@ Response length: Match depth to the question. A clarification = 2-3 sentences. A
   };
 }
 
+export function buildMilestonePrompt(
+  day: 30 | 100,
+  summary: {
+    completedTasks: number;
+    totalSessions: number;
+    domainsStudied: string[];
+    reflectionCount: number;
+  }
+): OpenRouterMessage[] {
+  const length = day === 30 ? '120–150 words' : '250–300 words';
+  return [
+    {
+      role: 'system',
+      content: `You are writing a personal milestone narrative for Satbir's private life OS (MomentumOS). He is a game designer, meditator, and curious technologist. Write in second person ("You've..."). Warm and specific. Terry Pratchett-adjacent wit — honest, direct, occasionally wry. No generic encouragement. Be specific to what he actually did.`,
+    },
+    {
+      role: 'user',
+      content: `Day ${day} milestone. Activity summary:\n- Tasks completed: ${summary.completedTasks}\n- Learning sessions finished: ${summary.totalSessions}\n- Domains studied: ${summary.domainsStudied.join(', ') || 'none recorded yet'}\n- Reflections written: ${summary.reflectionCount}\n\nWrite a ${length} narrative (flowing prose, no bullet points) acknowledging what has been built in these ${day} days and naming patterns you notice.`,
+    },
+  ];
+}
+
 /** Build the module orientation (intro) message. */
 export function buildModuleIntroPrompt(input: {
   curriculumTitle: string;

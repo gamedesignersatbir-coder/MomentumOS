@@ -24,6 +24,7 @@ import {
   addPriorityAction,
   addQuickTaskAction,
   dismissResurfaceAction,
+  generateMilestoneNarrativeAction,
   recordGreetingAction,
   restoreTaskAction,
   saveReflectionAction,
@@ -92,6 +93,10 @@ export function MomentumDashboard({
   const [showAllPriorities, setShowAllPriorities] = useState(false);
   const [deferredExpanded, setDeferredExpanded] = useState(false);
   const [resurfaceDismissed, setResurfaceDismissed] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [milestoneNarrative, setMilestoneNarrative] = useState<string | null>(
+    data.milestone?.narrative ?? null
+  );
   const oneThing = getOneThing(data.priorities as Priority[], currentMode);
 
   const displayPriorities = useMemo(
@@ -170,6 +175,35 @@ export function MomentumDashboard({
           <a href="/learn#reviews" className="btn-link" style={{ marginLeft: 4 }}>
             review now
           </a>
+        </div>
+      )}
+      {data.milestone && (
+        <div className="rounded-[28px] border border-amber-400/20 bg-amber-500/[0.06] px-6 py-5 mb-4">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-amber-400 font-semibold">Day {data.milestone.day}</span>
+            <span className="text-xs text-amber-300/60 uppercase tracking-widest">Milestone</span>
+          </div>
+          {milestoneNarrative ? (
+            <p className="text-sm text-slate-300 leading-relaxed">{milestoneNarrative}</p>
+          ) : (
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-slate-400">
+                Your {data.milestone.day}-day story is ready to be written.
+              </p>
+              <button
+                className="btn-primary shrink-0 text-sm px-4 py-2"
+                disabled={isGenerating}
+                onClick={async () => {
+                  setIsGenerating(true);
+                  const result = await generateMilestoneNarrativeAction(data.milestone!.day as 30 | 100);
+                  if (result.ok && result.narrative) setMilestoneNarrative(result.narrative);
+                  setIsGenerating(false);
+                }}
+              >
+                {isGenerating ? 'Writing…' : 'Generate my story'}
+              </button>
+            </div>
+          )}
         </div>
       )}
       {data.resurfacedReflection && !resurfaceDismissed && (
