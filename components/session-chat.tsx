@@ -81,14 +81,18 @@ export function SessionChat({ curriculumId, moduleIndex, priorFuzzy, initialSess
   const [postError, setPostError] = useState<string | null>(null);
   const [postPending, startPostTransition] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const introFiredRef = useRef(false);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Auto-fire opening message when session has no history yet
+  // Auto-fire opening message when session has no history yet.
+  // introFiredRef guards against double-invocation (React Strict Mode / HMR).
   useEffect(() => {
     if (initialHistory.length > 0 || initialSessionId !== null) return;
+    if (introFiredRef.current) return;
+    introFiredRef.current = true;
     startTransition(async () => {
       const result = await startSessionWithIntroAction(curriculumId, moduleIndex);
       if (!result.ok) { setError(result.message); return; }

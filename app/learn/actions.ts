@@ -240,7 +240,7 @@ export async function sendMessageAction(
   const updatedHistory = [...history, assistantMsg];
 
   updateSessionChat(sessionId, JSON.stringify(updatedHistory));
-  revalidatePath(`/learn/${curriculumId}/session`);
+  // Session page is force-dynamic — no revalidation needed here.
 
   return { ok: true, reply: replyText };
 }

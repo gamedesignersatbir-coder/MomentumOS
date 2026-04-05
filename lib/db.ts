@@ -20,6 +20,9 @@ if (!globalThis.momentumDatabase) {
   globalThis.momentumDatabase = db;
 }
 
+// Migrations run on every module load (idempotent) — safe across HMR reloads
+runMigrations(db);
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -82,12 +85,6 @@ function initializeDatabase(database: DatabaseSync) {
       created_at TEXT NOT NULL
     );
   `);
-  // Migration: add resurfaced_at if missing (safe to run every startup)
-  try {
-    database.exec(`ALTER TABLE reflections ADD COLUMN resurfaced_at TEXT`);
-  } catch {
-    // Column already exists — expected on subsequent runs
-  }
   database.exec(`
     CREATE TABLE IF NOT EXISTS user_profile (
       id INTEGER PRIMARY KEY,
@@ -158,6 +155,16 @@ function initializeDatabase(database: DatabaseSync) {
       saved_at TEXT NOT NULL
     );
   `);
+}
+
+function runMigrations(database: DatabaseSync) {
+  // resurfaced_at: added in Phase 5 — safe to run every startup (try/catch handles existing)
+  try {
+    database.exec(`ALTER TABLE reflections ADD COLUMN resurfaced_at TEXT`);
+  } catch {
+    // Column already exists — expected on subsequent runs
+  }
+  // milestones table: added in Phase 5
   database.exec(`
     CREATE TABLE IF NOT EXISTS milestones (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -551,10 +558,18 @@ export function getUserProfile(): UserProfile | null {
   return row ? toPlainObject(row) : null;
 }
 
+const ALLOWED_PROFILE_COLUMNS = new Set([
+  'display_name', 'about_me', 'domains_json', 'timezone',
+  'sadhana_morning_end', 'sadhana_afternoon_start', 'sadhana_afternoon_end',
+  'work_start', 'work_end',
+]);
+
 export function updateUserProfile(updates: Partial<Omit<UserProfile, 'id' | 'created_at'>>): void {
-  const fields = Object.keys(updates)
-    .map((k) => `${k} = ?`)
-    .join(', ');
+  const keys = Object.keys(updates);
+  for (const k of keys) {
+    if (!ALLOWED_PROFILE_COLUMNS.has(k)) throw new Error(`updateUserProfile: unknown column "${k}"`);
+  }
+  const fields = keys.map((k) => `${k} = ?`).join(', ');
   const values = [...Object.values(updates), new Date().toISOString()];
   db.prepare(
     `UPDATE user_profile SET ${fields}, updated_at = ? WHERE id = 1`
@@ -597,11 +612,13 @@ export function isUserAbsent(absentAfterDays = 3): boolean {
     'SELECT COUNT(*) as cnt FROM greeting_history'
   ).get() as { cnt: number };
   if (cnt === 0) return false; // first ever visit — not absent
-  // shown_at is stored as UTC via datetime('now') — consistent with this comparison.
-  // Uses >= so a session recorded exactly N days ago does NOT count as absent (correct).
+  // shown_at is stored as UTC via datetime('now'). Build the cutoff in JS to avoid
+  // any SQL string-interpolation fragility; pass as a plain bound parameter.
+  const cutoffMs = Date.now() - absentAfterDays * 24 * 60 * 60 * 1000;
+  const cutoff = new Date(cutoffMs).toISOString().slice(0, 19).replace('T', ' ');
   const { cnt: recent } = db.prepare(
-    `SELECT COUNT(*) as cnt FROM greeting_history WHERE shown_at >= datetime('now', '-' || ? || ' days')`
-  ).get(absentAfterDays) as { cnt: number };
+    `SELECT COUNT(*) as cnt FROM greeting_history WHERE shown_at >= ?`
+  ).get(cutoff) as { cnt: number };
   return recent === 0;
 }
 
