@@ -345,27 +345,41 @@ export function getDashboardData(): DashboardData {
       .get(dayKey(subDays(new Date(), 6))) as { total: number }
   ).total;
 
-  const weeklyTrend = Array.from({ length: 7 }, (_, index) => {
+  const trendDateKeys = Array.from({ length: 7 }, (_, i) =>
+    dayKey(subDays(new Date(), 6 - i))
+  );
+  const trendOldest = trendDateKeys[0];
+
+  const trendPriorityRows = db.prepare(`
+    SELECT created_at,
+      COUNT(*) as total,
+      SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as done
+    FROM priorities
+    WHERE created_at >= ?
+    GROUP BY created_at
+  `).all(trendOldest) as { created_at: string; total: number; done: number }[];
+
+  const trendSprintRows = db.prepare(`
+    SELECT created_at as day, SUM(minutes) as minutes
+    FROM learning_entries
+    WHERE created_at >= ?
+    GROUP BY created_at
+  `).all(trendOldest) as { day: string; minutes: number }[];
+
+  const trendPriorityMap = new Map(trendPriorityRows.map(r => [r.created_at, r]));
+  const trendSprintMap = new Map(trendSprintRows.map(r => [r.day, r]));
+
+  const weeklyTrend = trendDateKeys.map((key, index) => {
     const date = subDays(new Date(), 6 - index);
-    const key = dayKey(date);
-    const priorityDone = (
-      db.prepare("SELECT COUNT(*) as count FROM priorities WHERE created_at = ? AND status = 'done'").get(key) as {
-        count: number;
-      }
-    ).count;
-    const priorityTotal = (
-      db.prepare("SELECT COUNT(*) as count FROM priorities WHERE created_at = ?").get(key) as { count: number }
-    ).count;
-    const sprintMinutes = (
-      db.prepare("SELECT COALESCE(SUM(minutes), 0) as total FROM learning_entries WHERE created_at = ?").get(key) as {
-        total: number;
-      }
-    ).total;
+    const p = trendPriorityMap.get(key);
+    const s = trendSprintMap.get(key);
+    const priorityDone = p?.done ?? 0;
+    const priorityTotal = p?.total ?? 0;
+    const sprintMinutes = s?.minutes ?? 0;
     const completionRate = Math.min(
       100,
       Math.round((priorityDone / Math.max(priorityTotal, 1)) * 70 + Math.min(sprintMinutes, 60) * 0.5)
     );
-
     return {
       date: key,
       label: format(date, "EEE"),
@@ -529,13 +543,21 @@ export function saveReflection(input: {
   learningEdge: string;
   familyNote: string;
 }) {
-  const dashboard = getDashboardData();
+  const outstandingPriorities = (db.prepare(
+    `SELECT COUNT(*) as count FROM priorities WHERE status NOT IN ('done', 'archived')`
+  ).get() as { count: number }).count;
+
+  const avgConf = db.prepare(
+    `SELECT AVG(confidence) as avg FROM (SELECT confidence FROM learning_entries ORDER BY id DESC LIMIT 5)`
+  ).get() as { avg: number | null };
+  const learningConfidenceAverage = avgConf.avg ?? 0;
+
   const suggestion = buildNextDaySuggestion({
     energyWin: input.energyWin,
     learningEdge: input.learningEdge,
     familyNote: input.familyNote,
-    outstandingPriorities: dashboard.priorities.filter((item) => item.status !== "done").length,
-    learningConfidenceAverage: dashboard.summary.learningConfidenceAverage
+    outstandingPriorities,
+    learningConfidenceAverage
   });
 
   db.prepare(
