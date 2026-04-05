@@ -380,7 +380,10 @@ export function getDashboardData(): DashboardData {
     .get() as { suggestion?: string } | undefined;
 
   const daysSinceStart = getDaysSinceStart();
-  const milestoneDay = daysSinceStart === 30 ? 30 : daysSinceStart === 100 ? 100 : null;
+  const milestoneDay =
+    daysSinceStart !== null && daysSinceStart >= 100 ? 100 :
+    daysSinceStart !== null && daysSinceStart >= 30 ? 30 :
+    null;
   const milestone: MilestoneData | null = milestoneDay
     ? { day: milestoneDay as 30 | 100, narrative: getMilestoneNarrative(milestoneDay) }
     : null;

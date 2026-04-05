@@ -276,7 +276,8 @@ export async function generateMilestoneNarrativeAction(
     saveMilestoneNarrative(day, narrative);
     revalidatePath('/');
     return { ok: true, narrative };
-  } catch {
+  } catch (err) {
+    console.error('[generateMilestoneNarrativeAction]', err);
     return { ok: false, message: "Couldn't generate narrative — check your connection and try again." };
   }
 }
