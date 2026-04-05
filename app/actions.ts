@@ -231,7 +231,12 @@ const profileSchema = z.object({
   sadhana_afternoon_start: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format'),
   sadhana_afternoon_end: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format'),
   work_start: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format'),
-  work_end: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format'),
+  work_end: z.string()
+    .regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format')
+    .refine(v => {
+      const [h, m] = v.split(':').map(Number);
+      return h * 60 + m <= 22 * 60 + 30; // max 22:30
+    }, 'Work end must be 22:30 or earlier'),
   timezone: z.enum(TIMEZONE_VALUES).default('Asia/Kolkata'),
 });
 
