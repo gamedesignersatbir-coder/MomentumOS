@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getCurriculumById, getSessionsForCurriculum, getSavedStories } from '@/lib/db';
+import { getCurriculumById, getSessionsForCurriculum, getSavedStoriesByCategory } from '@/lib/db';
 import { parseModules } from '@/lib/curriculum-types';
 import { ModuleCard } from '@/components/module-card';
 
@@ -8,8 +8,8 @@ export const dynamic = 'force-dynamic';
 
 function domainToCategory(domain: string): 'gaming' | 'ai' | null {
   const d = domain.toLowerCase();
-  if (d.includes('game') || d.includes('design') || d.includes('unity') || d.includes('godot') || d.includes('pixel') || d.includes('level')) return 'gaming';
-  if (d.includes('ai') || d.includes('ml') || d.includes('machine') || d.includes('llm') || d.includes('deep') || d.includes('neural') || d.includes('model')) return 'ai';
+  if (d.includes('game') || d.includes('unity') || d.includes('godot') || d.includes('pixel') || d.includes('level design')) return 'gaming';
+  if (d.includes(' ai') || d.startsWith('ai') || d.includes('ml') || d.includes('machine') || d.includes('llm') || d.includes('neural') || d.includes('deep learning') || d.includes('model')) return 'ai';
   return null;
 }
 
@@ -25,10 +25,9 @@ export default async function CurriculumPage({ params }: Props) {
   const modules = parseModules(curriculum.modulesJson);
   const sessions = getSessionsForCurriculum(curriculum.id);
 
-  const savedStories = getSavedStories();
   const relatedCategory = domainToCategory(curriculum.domain);
   const relatedStories = relatedCategory
-    ? savedStories.filter(s => s.category === relatedCategory).slice(0, 3)
+    ? getSavedStoriesByCategory(relatedCategory).slice(0, 3)
     : [];
 
   const completedModuleIndices = new Set(

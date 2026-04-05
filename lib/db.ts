@@ -777,6 +777,12 @@ export function getSavedStories(): SavedStory[] {
   ) as SavedStory[];
 }
 
+export function getSavedStoriesByCategory(category: string): SavedStory[] {
+  return toPlainObject(
+    db.prepare('SELECT id, title, url, source, category, summary, saved_at as savedAt FROM saved_stories WHERE category = ? ORDER BY saved_at DESC').all(category)
+  ) as SavedStory[];
+}
+
 export function saveStory(item: { title: string; url: string; source: string; category: string; summary: string }): void {
   db.prepare(
     'INSERT OR IGNORE INTO saved_stories (title, url, source, category, summary, saved_at) VALUES (?, ?, ?, ?, ?, ?)'
