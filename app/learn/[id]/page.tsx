@@ -1,10 +1,17 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getCurriculumById, getSessionsForCurriculum } from '@/lib/db';
+import { getCurriculumById, getSessionsForCurriculum, getSavedStories } from '@/lib/db';
 import { parseModules } from '@/lib/curriculum-types';
 import { ModuleCard } from '@/components/module-card';
 
 export const dynamic = 'force-dynamic';
+
+function domainToCategory(domain: string): 'gaming' | 'ai' | null {
+  const d = domain.toLowerCase();
+  if (d.includes('game') || d.includes('design') || d.includes('unity') || d.includes('godot') || d.includes('pixel') || d.includes('level')) return 'gaming';
+  if (d.includes('ai') || d.includes('ml') || d.includes('machine') || d.includes('llm') || d.includes('deep') || d.includes('neural') || d.includes('model')) return 'ai';
+  return null;
+}
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -17,6 +24,12 @@ export default async function CurriculumPage({ params }: Props) {
 
   const modules = parseModules(curriculum.modulesJson);
   const sessions = getSessionsForCurriculum(curriculum.id);
+
+  const savedStories = getSavedStories();
+  const relatedCategory = domainToCategory(curriculum.domain);
+  const relatedStories = relatedCategory
+    ? savedStories.filter(s => s.category === relatedCategory).slice(0, 3)
+    : [];
 
   const completedModuleIndices = new Set(
     sessions.filter((s) => s.completedAt !== null).map((s) => s.moduleIndex)
@@ -95,6 +108,45 @@ export default async function CurriculumPage({ params }: Props) {
             />
           ))}
         </div>
+
+        {relatedStories.length > 0 && (
+          <section style={{ marginTop: 'var(--space-8)' }}>
+            <h2 style={{
+              fontSize: '0.75rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.22em',
+              color: 'var(--text-muted)',
+              marginBottom: 'var(--space-4)',
+            }}>
+              Related reading
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              {relatedStories.map(story => (
+                <a
+                  key={story.id}
+                  href={story.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'block',
+                    padding: 'var(--space-4)',
+                    borderRadius: '20px',
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--bg-surface)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)', marginBottom: 'var(--space-1)' }}>
+                    {story.title}
+                  </p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {story.source}
+                  </p>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );
