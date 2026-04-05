@@ -4,7 +4,11 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateCurriculumAction } from '@/app/learn/actions';
 
-export function CurriculumBuilderForm() {
+interface CurriculumBuilderFormProps {
+  defaultGoal?: string;
+}
+
+export function CurriculumBuilderForm({ defaultGoal }: CurriculumBuilderFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +34,7 @@ export function CurriculumBuilderForm() {
           className="textarea"
           rows={5}
           placeholder="I want to learn how to design tight game mechanics and rapidly prototype them using AI coding tools like Claude Code — so I can go from concept to playable loop in hours, not weeks."
+          defaultValue={defaultGoal ?? ''}
           required
         />
         <p style={{ marginTop: 'var(--space-2)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>

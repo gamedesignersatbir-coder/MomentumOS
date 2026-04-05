@@ -1,5 +1,50 @@
 @import "tailwindcss";
 
+/* ===== PulseFeed CSS Variable Aliases (navy palette to match app) ===== */
+:root {
+  --surface: transparent;
+  --surface-raised: rgba(8, 17, 34, 0.78);
+  --surface-overlay: rgba(8, 16, 32, 0.93);
+  --content: #eef4ff;
+  --content-secondary: #96a8c7;
+  --content-muted: rgba(150, 168, 199, 0.55);
+  --content-faint: rgba(150, 168, 199, 0.28);
+  --border-muted: rgba(157, 189, 255, 0.08);
+}
+
+/* ===== PulseFeed Tailwind 4 @theme tokens ===== */
+@theme {
+  --color-surface: transparent;
+  --color-surface-raised: rgba(8, 17, 34, 0.78);
+  --color-surface-overlay: rgba(8, 16, 32, 0.93);
+  --color-content: #eef4ff;
+  --color-content-secondary: #96a8c7;
+  --color-content-muted: rgba(150, 168, 199, 0.55);
+  --color-content-faint: rgba(150, 168, 199, 0.28);
+  --color-border: rgba(157, 189, 255, 0.13);
+  --color-border-muted: rgba(157, 189, 255, 0.08);
+
+  --animate-ticker-scroll: ticker-scroll 30s linear infinite;
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+  --animate-slide-in: slide-in 0.3s ease-out;
+}
+
+/* ===== PulseFeed Animation Keyframes ===== */
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 :root {
   --background: #08111f;
   --foreground: #eef4ff;

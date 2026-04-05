@@ -4,6 +4,8 @@ coverage
 dist
 *.log
 momentum-os.db
+momentum-os.db-shm
+momentum-os.db-wal
 tsconfig.tsbuildinfo
 tsconfig.typecheck.tsbuildinfo
 .env.local

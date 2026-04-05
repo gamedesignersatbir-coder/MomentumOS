@@ -1,6 +1,11 @@
 import { CurriculumBuilderForm } from '@/components/curriculum-builder-form';
 
-export default function NewCurriculumPage() {
+interface NewCurriculumPageProps {
+  searchParams: Promise<{ goal?: string }>;
+}
+
+export default async function NewCurriculumPage({ searchParams }: NewCurriculumPageProps) {
+  const { goal } = await searchParams;
   return (
     <main className="page-wrapper">
       <div style={{ maxWidth: 560, paddingTop: 'var(--space-8)' }}>
@@ -10,7 +15,7 @@ export default function NewCurriculumPage() {
         <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-8)', fontSize: '0.9rem' }}>
           Describe what you want to learn. The AI builds a structured path.
         </p>
-        <CurriculumBuilderForm />
+        <CurriculumBuilderForm defaultGoal={goal} />
       </div>
     </main>
   );

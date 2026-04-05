@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, LayoutDashboard, User } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Rss, User } from 'lucide-react';
 import { cx } from '@/lib/utils';
 
 const LINKS = [
   { href: '/', label: 'Daily OS', icon: LayoutDashboard },
   { href: '/learn', label: 'Learn', icon: BookOpen },
+  { href: '/pulse', label: 'Pulse', icon: Rss },
   { href: '/profile', label: 'Profile', icon: User },
 ];
 
@@ -42,7 +43,7 @@ export function Nav() {
       </span>
       {LINKS.map(({ href, label, icon: Icon }) => {
         const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
-        const typedHref = href as '/' | '/learn' | '/profile';
+        const typedHref = href as '/' | '/learn' | '/pulse' | '/profile';
         return (
           <Link
             key={href}
