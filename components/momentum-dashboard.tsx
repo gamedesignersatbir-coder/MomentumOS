@@ -195,16 +195,19 @@ export function MomentumDashboard({
                 disabled={isGenerating}
                 onClick={async () => {
                   setIsGenerating(true);
-                  const result = await generateMilestoneNarrativeAction(data.milestone!.day as 30 | 100);
-                  if (result.ok && result.narrative) {
-                    setMilestoneNarrative(result.narrative);
-                  } else if (!result.ok) {
-                    pushToast({
-                      title: result.message ?? "Couldn't generate narrative — check your connection and try again.",
-                      tone: "error"
-                    });
+                  try {
+                    const result = await generateMilestoneNarrativeAction(data.milestone!.day as 30 | 100);
+                    if (result.ok && result.narrative) {
+                      setMilestoneNarrative(result.narrative);
+                    } else if (!result.ok) {
+                      pushToast({
+                        title: result.message ?? "Couldn't generate narrative — check your connection and try again.",
+                        tone: "error"
+                      });
+                    }
+                  } finally {
+                    setIsGenerating(false);
                   }
-                  setIsGenerating(false);
                 }}
               >
                 {isGenerating ? 'Writing…' : 'Generate my story'}
