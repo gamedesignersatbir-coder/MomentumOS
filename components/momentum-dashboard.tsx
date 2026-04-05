@@ -765,11 +765,7 @@ export function MomentumDashboard({
         <form
           className="grid gap-3"
           action={(formData) =>
-            runAction(async () => {
-              const result = await saveReflectionAction(formData);
-              setIsReflectionOpen(true);
-              return result;
-            })
+            runAction(async () => saveReflectionAction(formData))
           }
         >
           <Field as="textarea" name="energyWin" rows={3} label="What created energy today?" />

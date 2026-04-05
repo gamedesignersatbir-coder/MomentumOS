@@ -7,6 +7,7 @@ import { quickCaptureAction } from '@/app/actions';
 export function QuickCapture() {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -36,9 +37,14 @@ export function QuickCapture() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!value.trim()) return;
-    await quickCaptureAction(value.trim());
-    setValue('');
-    setOpen(false);
+    try {
+      await quickCaptureAction(value.trim());
+      setValue('');
+      setError(null);
+      setOpen(false);
+    } catch {
+      setError('Failed to save — try again.');
+    }
   }
 
   if (!open) return null;
@@ -58,6 +64,7 @@ export function QuickCapture() {
           onChange={(e) => setValue(e.target.value)}
           placeholder="What's on your mind?"
         />
+        {error && <p style={{ color: 'var(--error)', fontSize: '0.8rem', marginTop: 4 }}>{error}</p>}
         <div className="quick-capture-hint">Enter to save · Esc to cancel</div>
       </form>
     </div>

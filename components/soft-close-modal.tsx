@@ -39,8 +39,8 @@ export function SoftCloseModal({ priorities, onClose }: Props) {
   }
 
   return (
-    <div className="modal-overlay">
-      <div className="modal">
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2 className="modal-title">How did today go?</h2>
           <p className="modal-subtitle">60 seconds to close the day cleanly.</p>

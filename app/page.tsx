@@ -46,6 +46,7 @@ export default function Home() {
     loadLevel,
     dayOfWeek: now.getDay(),
     isAbsent,
+    milestone: data.milestone?.day,
     recentlyShownIds: recentIds,
   });
 

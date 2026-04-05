@@ -696,6 +696,15 @@ export function getLatestCompletedSession(curriculumId: number, moduleIndex: num
   return row ? (toPlainObject(row) as ReturnType<typeof getLatestCompletedSession>) : null;
 }
 
+export function getActiveSession(curriculumId: number, moduleIndex: number): {
+  id: number; chatHistoryJson: string;
+} | null {
+  const row = db.prepare(
+    'SELECT id, chat_history_json as chatHistoryJson FROM learning_sessions WHERE curriculum_id = ? AND module_index = ? AND completed_at IS NULL ORDER BY id DESC LIMIT 1'
+  ).get(curriculumId, moduleIndex);
+  return row ? (toPlainObject(row) as { id: number; chatHistoryJson: string }) : null;
+}
+
 export function createSession(curriculumId: number, moduleIndex: number): number {
   const result = db.prepare(
     'INSERT INTO learning_sessions (curriculum_id, module_index) VALUES (?, ?)'
@@ -823,7 +832,8 @@ export function getDaysSinceStart(): number | null {
   ).get() as { first_day: string | null };
   if (!row.first_day) return null;
   const diffMs = Date.now() - new Date(row.first_day).getTime();
-  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  // Add 1 so day-of-first-use = day 1, not day 0. Milestone "Day 30" fires on 30th day of use.
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
 }
 
 export function getMilestoneNarrative(day: number): string | null {

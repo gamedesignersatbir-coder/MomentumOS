@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
-import { getCurriculumById, getLatestCompletedSession } from '@/lib/db';
+import { getCurriculumById, getLatestCompletedSession, getActiveSession } from '@/lib/db';
 import { parseModules } from '@/lib/curriculum-types';
+import type { ChatMessage } from '@/lib/curriculum-types';
 import { SessionChat } from '@/components/session-chat';
 import { ObjectivesPanel } from '@/components/objectives-panel';
 
@@ -25,6 +26,13 @@ export default async function SessionPage({ params, searchParams }: Props) {
 
   const priorSession = getLatestCompletedSession(curriculum.id, moduleIndex);
 
+  // Resume an in-progress session if one exists — prevents data loss on navigation away
+  const activeSession = getActiveSession(curriculum.id, moduleIndex);
+  const initialSessionId = activeSession?.id ?? null;
+  const initialHistory: ChatMessage[] = activeSession
+    ? (JSON.parse(activeSession.chatHistoryJson) as ChatMessage[])
+    : [];
+
   return (
     <main className="page-wrapper" style={{ paddingTop: 'var(--space-6)' }}>
       <div style={{ marginBottom: 'var(--space-4)' }}>
@@ -48,8 +56,8 @@ export default async function SessionPage({ params, searchParams }: Props) {
         curriculumId={curriculum.id}
         moduleIndex={moduleIndex}
         priorFuzzy={priorSession?.whatsFuzzy ?? null}
-        initialSessionId={null}
-        initialHistory={[]}
+        initialSessionId={initialSessionId}
+        initialHistory={initialHistory}
       />
     </main>
   );

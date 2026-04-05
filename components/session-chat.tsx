@@ -108,15 +108,17 @@ export function SessionChat({ curriculumId, moduleIndex, priorFuzzy, initialSess
     setInputValue('');
     setError(null);
 
+    // Optimistically add the user message immediately so the UI feels instant
+    const userMsg: ChatMessage = { role: 'user', content, createdAt: new Date().toISOString() };
+    setMessages((prev) => [...prev, userMsg]);
+
     startTransition(async () => {
       if (sessionId === null) return; // session is created by intro action
       const result = await sendMessageAction(sessionId, curriculumId, moduleIndex, content);
       if (!result.ok) { setError(result.message); return; }
 
-      const now = new Date().toISOString();
       setMessages((prev) => [
         ...prev,
-        { role: 'user', content, createdAt: now },
         { role: 'assistant', content: result.reply, createdAt: new Date().toISOString() },
       ]);
     });
@@ -168,7 +170,7 @@ export function SessionChat({ curriculumId, moduleIndex, priorFuzzy, initialSess
         )}
         {messages.map((msg, i) => (
           <div
-            key={i}
+            key={`${msg.role}-${msg.createdAt}-${i}`}
             style={{
               alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
               maxWidth: '80%',
