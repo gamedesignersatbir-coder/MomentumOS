@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { FeedItem, TrendingTopic, TrendVelocity, DramaLevel } from "@/lib/pulse/types";
 import { dramaLevelEmoji, dramaLevelColor } from "@/lib/pulse/scorer";
 import { categoryColor, formatNumber, timeAgo } from "@/lib/pulse/utils";
@@ -123,7 +123,7 @@ export default function PulseBottomSheetTrending({ items, isOpen, onClose, onTop
 
   if (!isOpen) return null;
 
-  const trending = extractTrending(items);
+  const trending = useMemo(() => extractTrending(items), [items]);
 
   const allDrama = [...items]
     .filter((i) => i.dramaScore >= 25)
