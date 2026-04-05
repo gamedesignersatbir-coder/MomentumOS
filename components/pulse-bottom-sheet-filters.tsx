@@ -11,7 +11,7 @@ const SORT_OPTIONS: { value: FilterState["sortOrder"]; label: string; emoji: str
   { value: "drama", label: "Drama", emoji: "⚡" },
 ];
 
-const CATEGORIES: FeedCategory[] = ["ai", "gaming", "social", "general", "drama", "breaking"];
+const CATEGORIES: FeedCategory[] = ["ai", "gaming", "social", "general"];
 
 const SOURCES: { value: FeedSource; label: string }[] = [
   { value: "rss", label: "News" },
@@ -103,7 +103,7 @@ export default function PulseBottomSheetFilters({
                 Clear all
               </button>
             )}
-            <button onClick={onClose} className="text-content-faint hover:text-content transition-colors">
+            <button onClick={onClose} aria-label="Close filters" className="text-content-faint hover:text-content transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
