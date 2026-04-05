@@ -29,7 +29,9 @@ import PulseLiveIndicator from "./pulse-live-indicator";
 import PulseKeyboardShortcutsHelp from "./pulse-keyboard-shortcuts-help";
 import PulseSettingsPanel from "./pulse-settings-panel";
 import PulseHistorySearch from "./pulse-history-search";
-import { Menu, TrendingUp, CheckCheck } from "lucide-react";
+import PulseBottomSheetFilters from "./pulse-bottom-sheet-filters";
+import PulseBottomSheetTrending from "./pulse-bottom-sheet-trending";
+import { CheckCheck } from "lucide-react";
 
 const DEFAULT_FILTERS: FilterState = {
   categories: [],
@@ -63,6 +65,7 @@ export function PulseDashboard() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [trendingOpen, setTrendingOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -251,6 +254,13 @@ export function PulseDashboard() {
   const breakingItems = items.filter((i) => i.isBreaking);
   const dramaItems = items.filter((i) => i.dramaScore >= 35);
 
+  const activeFilterCount =
+    filters.categories.length +
+    filters.sources.length +
+    (filters.breakingOnly ? 1 : 0) +
+    (filters.bookmarksOnly ? 1 : 0) +
+    (filters.minDramaScore > 0 ? 1 : 0);
+
   const { focusedIndex } = useKeyboardNavigation(filteredItems.length, {
     onOpen: (index) => {
       const item = filteredItems[index];
@@ -270,14 +280,7 @@ export function PulseDashboard() {
   });
 
   return (
-    <div className="flex h-full bg-surface text-content overflow-hidden">
-      {(sidebarOpen || trendingOpen) && (
-        <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
-          onClick={() => { setSidebarOpen(false); setTrendingOpen(false); }}
-        />
-      )}
-
+    <div className="flex h-full lg:overflow-hidden bg-surface text-content">
       <PulseSidebar
         items={items}
         filteredItems={filteredItems}
@@ -300,28 +303,6 @@ export function PulseDashboard() {
       />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile top bar */}
-        <div className="flex items-center justify-between px-3 py-2 lg:hidden border-b border-border bg-surface-raised">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-1.5 rounded-lg hover:bg-surface-overlay text-content-muted"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
-              <span className="text-[10px] text-white font-bold">P</span>
-            </div>
-            <span className="text-xs font-bold text-content">Pulse</span>
-          </div>
-          <button
-            onClick={() => setTrendingOpen(true)}
-            className="p-1.5 rounded-lg hover:bg-surface-overlay text-content-muted"
-          >
-            <TrendingUp className="w-5 h-5" />
-          </button>
-        </div>
-
         <PulseBreakingTicker items={breakingItems} />
 
         <PulseFilterBar
@@ -335,7 +316,7 @@ export function PulseDashboard() {
         />
 
         <div ref={feedScrollRef} className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto p-4 md:p-5">
+          <div className="max-w-3xl mx-auto p-4 md:p-5 pb-16 lg:pb-5">
             <div className="flex items-center justify-between mb-4">
               <PulseLiveIndicator
                 isLive={settings.autoRefresh}
@@ -426,6 +407,40 @@ export function PulseDashboard() {
             <div className="h-8" />
           </div>
         </div>
+
+        {/* Mobile bottom bar — hidden on desktop */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-2 bg-surface-raised/95 backdrop-blur-sm border-t border-border">
+          <button
+            onClick={() => { setFiltersOpen(true); setTrendingOpen(false); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              filtersOpen
+                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                : "bg-surface text-content-secondary border border-border"
+            }`}
+          >
+            <span>⚙</span>
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="bg-amber-500/30 text-amber-400 px-1.5 rounded-full text-[10px] font-semibold">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          <span className="text-xs text-content-muted">{filteredItems.length} items</span>
+
+          <button
+            onClick={() => { setTrendingOpen(true); setFiltersOpen(false); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              trendingOpen
+                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                : "bg-surface text-content-secondary border border-border"
+            }`}
+          >
+            <span>📈</span>
+            <span>Trending</span>
+          </button>
+        </div>
       </div>
 
       <PulseTrendingPanel
@@ -438,6 +453,23 @@ export function PulseDashboard() {
       <PulseKeyboardShortcutsHelp isOpen={showHelp} onClose={() => setShowHelp(false)} />
       <PulseSettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} />
       <PulseHistorySearch isOpen={showHistory} onClose={() => setShowHistory(false)} />
+
+      <PulseBottomSheetFilters
+        isOpen={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        filters={filters}
+        onFilterChange={setFilters}
+        dramaItems={dramaItems.length}
+        breakingItems={breakingItems.length}
+        bookmarkCount={bookmarkedItems.length}
+      />
+
+      <PulseBottomSheetTrending
+        items={items}
+        isOpen={trendingOpen}
+        onClose={() => setTrendingOpen(false)}
+        onTopicClick={handleTopicClick}
+      />
     </div>
   );
 }
