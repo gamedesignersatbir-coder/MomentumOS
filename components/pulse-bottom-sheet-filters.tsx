@@ -74,8 +74,7 @@ export default function PulseBottomSheetFilters({
     filters.sources.length > 0 ||
     filters.breakingOnly ||
     filters.bookmarksOnly ||
-    filters.minDramaScore > 0 ||
-    filters.sortOrder !== "importance";
+    filters.minDramaScore > 0;
 
   return (
     <div className="lg:hidden">
@@ -85,7 +84,7 @@ export default function PulseBottomSheetFilters({
         onClick={onClose}
       />
       {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface-raised border-t border-border rounded-t-2xl max-h-[65vh] overflow-y-auto">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface-raised border-t border-border rounded-t-2xl max-h-[65vh] overflow-y-auto overscroll-contain">
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-border rounded-full" />

@@ -65,6 +65,7 @@ export function PulseDashboard() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [trendingOpen, setTrendingOpen] = useState(false);
+  const [trendingSheetOpen, setTrendingSheetOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -411,7 +412,7 @@ export function PulseDashboard() {
         {/* Mobile bottom bar — hidden on desktop */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-2 bg-surface-raised/95 backdrop-blur-sm border-t border-border">
           <button
-            onClick={() => { setFiltersOpen(true); setTrendingOpen(false); }}
+            onClick={() => { setFiltersOpen(true); setTrendingSheetOpen(false); }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               filtersOpen
                 ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
@@ -430,9 +431,9 @@ export function PulseDashboard() {
           <span className="text-xs text-content-muted">{filteredItems.length} items</span>
 
           <button
-            onClick={() => { setTrendingOpen(true); setFiltersOpen(false); }}
+            onClick={() => { setTrendingSheetOpen(true); setFiltersOpen(false); }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              trendingOpen
+              trendingSheetOpen
                 ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                 : "bg-surface text-content-secondary border border-border"
             }`}
@@ -466,8 +467,8 @@ export function PulseDashboard() {
 
       <PulseBottomSheetTrending
         items={items}
-        isOpen={trendingOpen}
-        onClose={() => setTrendingOpen(false)}
+        isOpen={trendingSheetOpen}
+        onClose={() => setTrendingSheetOpen(false)}
         onTopicClick={handleTopicClick}
       />
     </div>
