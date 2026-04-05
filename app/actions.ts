@@ -40,8 +40,8 @@ const quickTaskSchema = z.object({
 
 const focusBlockSchema = z.object({
   label: z.string().min(3).max(80),
-  startTime: z.string().min(1),
-  endTime: z.string().min(1),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format'),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format'),
   intensity: z.enum(["Deep", "Steady", "Light"])
 });
 
@@ -227,11 +227,11 @@ const profileSchema = z.object({
   display_name: z.string().min(1).max(60),
   about_me: z.string().max(500).default(''),
   domains: z.string().default('[]'),
-  sadhana_morning_end: z.string().min(1),
-  sadhana_afternoon_start: z.string().min(1),
-  sadhana_afternoon_end: z.string().min(1),
-  work_start: z.string().min(1),
-  work_end: z.string().min(1),
+  sadhana_morning_end: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format'),
+  sadhana_afternoon_start: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format'),
+  sadhana_afternoon_end: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format'),
+  work_start: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format'),
+  work_end: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format'),
   timezone: z.enum(TIMEZONE_VALUES).default('Asia/Kolkata'),
 });
 

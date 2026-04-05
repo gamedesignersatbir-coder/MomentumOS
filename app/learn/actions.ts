@@ -195,6 +195,7 @@ export async function sendMessageAction(
   userContent: string
 ): Promise<{ ok: true; reply: string } | { ok: false; message: string }> {
   if (!userContent.trim()) return { ok: false, message: 'Message cannot be blank.' };
+  if (userContent.length > 4000) return { ok: false, message: 'Message too long (max 4000 characters).' };
 
   const curriculum = getCurriculumById(curriculumId);
   if (!curriculum) return { ok: false, message: 'Curriculum not found.' };
