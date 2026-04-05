@@ -4,7 +4,7 @@ import path from "node:path";
 import { format, subDays } from "date-fns";
 
 import { buildNextDaySuggestion } from "@/lib/reflection";
-import type { DashboardData, MilestoneData, ResurfacedReflection, UserProfile } from "@/lib/types";
+import type { DashboardData, EnergyPattern, MilestoneData, MonthlyNarrative, ResurfacedReflection, UserProfile } from "@/lib/types";
 
 const databasePath = path.join(process.cwd(), "momentum-os.db");
 
@@ -171,6 +171,17 @@ function runMigrations(database: DatabaseSync) {
       day_number INTEGER NOT NULL UNIQUE,
       narrative_text TEXT NOT NULL,
       generated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+  // monthly_narratives table: added in Phase 5
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS monthly_narratives (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      year INTEGER NOT NULL,
+      month INTEGER NOT NULL,
+      narrative_text TEXT NOT NULL,
+      generated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(year, month)
     )
   `);
 }
@@ -395,6 +406,8 @@ export function getDashboardData(): DashboardData {
     ? { day: milestoneDay as 30 | 100, narrative: getMilestoneNarrative(milestoneDay) }
     : null;
 
+  const energyPatterns = getEnergyPatterns();
+
   return {
     priorities,
     focusBlocks,
@@ -403,6 +416,7 @@ export function getDashboardData(): DashboardData {
     prompts,
     tags: [...new Set(prompts.flatMap((prompt) => prompt.tags))].sort(),
     weeklyTrend,
+    energyPatterns,
     summary: {
       completedPriorities,
       completedToday: completedPriorities + completedFocusBlocks + completedQuickTasks,
@@ -424,6 +438,7 @@ export function getDashboardData(): DashboardData {
     },
     resurfacedReflection: getResurfaceableReflection(),
     milestone,
+    monthlyNarrative: getMonthlyNarrativeData(),
   };
 }
 
@@ -873,4 +888,84 @@ export function getActivitySummary(): {
     domainsStudied: domains.map(d => d.domain),
     reflectionCount,
   };
+}
+
+export function getEnergyPatterns(): EnergyPattern[] {
+  const rows = db.prepare(`
+    SELECT
+      CAST(substr(start_time, 1, 2) AS INTEGER) as hour,
+      intensity,
+      CAST(SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS REAL) / COUNT(*) as completionRate,
+      SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as count
+    FROM focus_blocks
+    WHERE intensity IN ('Deep', 'Steady', 'Light')
+    GROUP BY hour, intensity
+    HAVING count > 0
+  `).all() as EnergyPattern[];
+  return toPlainObject(rows);
+}
+
+export function getMonthlyNarrative(year: number, month: number): string | null {
+  const row = db.prepare(
+    `SELECT narrative_text FROM monthly_narratives WHERE year = ? AND month = ?`
+  ).get(year, month) as { narrative_text: string } | undefined;
+  return row?.narrative_text ?? null;
+}
+
+export function saveMonthlyNarrative(year: number, month: number, text: string): void {
+  db.prepare(
+    `INSERT OR REPLACE INTO monthly_narratives (year, month, narrative_text, generated_at) VALUES (?, ?, ?, datetime('now'))`
+  ).run(year, month, text);
+}
+
+export function getMonthlyActivitySummary(year: number, month: number): {
+  completedTasks: number;
+  totalSessions: number;
+  domainsStudied: string[];
+  reflectionCount: number;
+  learningMinutes: number;
+} {
+  const prefix = `${String(year)}-${String(month).padStart(2, '0')}`;
+  const { completedTasks } = db.prepare(
+    `SELECT COUNT(*) as completedTasks FROM priorities WHERE status = 'done' AND created_at LIKE ?`
+  ).get(`${prefix}-%`) as { completedTasks: number };
+  const { totalSessions } = db.prepare(
+    `SELECT COUNT(*) as totalSessions FROM learning_sessions WHERE completed_at IS NOT NULL AND completed_at LIKE ?`
+  ).get(`${prefix}-%`) as { totalSessions: number };
+  const domains = db.prepare(
+    `SELECT DISTINCT c.domain FROM learning_sessions ls JOIN curricula c ON ls.curriculum_id = c.id WHERE ls.completed_at LIKE ?`
+  ).all(`${prefix}-%`) as { domain: string }[];
+  const { reflectionCount } = db.prepare(
+    `SELECT COUNT(*) as reflectionCount FROM reflections WHERE created_at LIKE ?`
+  ).get(`${prefix}-%`) as { reflectionCount: number };
+  const { learningMinutes } = db.prepare(
+    `SELECT COALESCE(SUM(minutes), 0) as learningMinutes FROM learning_entries WHERE created_at LIKE ?`
+  ).get(`${prefix}-%`) as { learningMinutes: number };
+  return {
+    completedTasks,
+    totalSessions,
+    domainsStudied: domains.map((d) => d.domain),
+    reflectionCount,
+    learningMinutes,
+  };
+}
+
+export function getMonthlyNarrativeData(): MonthlyNarrative | null {
+  const row = db.prepare(
+    `SELECT MIN(shown_at) as first_day FROM greeting_history`
+  ).get() as { first_day: string | null };
+  if (!row.first_day) return null;
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // 1–12
+
+  const firstDate = new Date(row.first_day);
+  const firstYear = firstDate.getFullYear();
+  const firstMonth = firstDate.getMonth() + 1;
+
+  // Only show once we're past the first calendar month of use
+  if (currentYear === firstYear && currentMonth === firstMonth) return null;
+
+  return { year: currentYear, month: currentMonth, narrative: getMonthlyNarrative(currentYear, currentMonth) };
 }

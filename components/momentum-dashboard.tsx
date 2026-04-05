@@ -25,6 +25,7 @@ import {
   addQuickTaskAction,
   dismissResurfaceAction,
   generateMilestoneNarrativeAction,
+  generateMonthlyNarrativeAction,
   recordGreetingAction,
   restoreTaskAction,
   saveReflectionAction,
@@ -97,7 +98,11 @@ export function MomentumDashboard({
   const [milestoneNarrative, setMilestoneNarrative] = useState<string | null>(
     data.milestone?.narrative ?? null
   );
-  const oneThing = getOneThing(data.priorities as Priority[], currentMode);
+  const [monthlyNarrative, setMonthlyNarrative] = useState<string | null>(
+    data.monthlyNarrative?.narrative ?? null
+  );
+  const [isGeneratingMonthly, setIsGeneratingMonthly] = useState(false);
+  const oneThing = getOneThing(data.priorities as Priority[], currentMode, data.energyPatterns);
 
   const displayPriorities = useMemo(
     () => data.priorities.filter((p) => p.status !== 'deferred'),
@@ -211,6 +216,50 @@ export function MomentumDashboard({
                 }}
               >
                 {isGenerating ? 'Writing…' : 'Generate my story'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {data.monthlyNarrative && (
+        <div className="rounded-[28px] border border-violet-400/20 bg-violet-500/[0.05] px-6 py-5 mb-4">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-violet-400 font-semibold">
+              {new Date(data.monthlyNarrative.year, data.monthlyNarrative.month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
+            </span>
+            <span className="text-xs text-violet-300/60 uppercase tracking-widest">Monthly story</span>
+          </div>
+          {monthlyNarrative ? (
+            <p className="text-sm text-slate-300 leading-relaxed">{monthlyNarrative}</p>
+          ) : (
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-slate-400">
+                Your story for this month is ready to be written.
+              </p>
+              <button
+                className="btn-primary shrink-0 text-sm px-4 py-2"
+                disabled={isGeneratingMonthly}
+                onClick={async () => {
+                  setIsGeneratingMonthly(true);
+                  try {
+                    const result = await generateMonthlyNarrativeAction(
+                      data.monthlyNarrative!.year,
+                      data.monthlyNarrative!.month
+                    );
+                    if (result.ok && result.narrative) {
+                      setMonthlyNarrative(result.narrative);
+                    } else if (!result.ok) {
+                      pushToast({
+                        title: result.message ?? "Couldn't generate narrative — check your connection and try again.",
+                        tone: "error"
+                      });
+                    }
+                  } finally {
+                    setIsGeneratingMonthly(false);
+                  }
+                }}
+              >
+                {isGeneratingMonthly ? 'Writing…' : 'Generate my story'}
               </button>
             </div>
           )}

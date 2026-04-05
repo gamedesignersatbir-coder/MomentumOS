@@ -3,6 +3,19 @@ export interface MilestoneData {
   narrative: string | null; // null = not yet generated
 }
 
+export interface EnergyPattern {
+  hour: number;           // 0–23, extracted from focus_blocks.start_time ("09:00" → 9)
+  intensity: 'Deep' | 'Steady' | 'Light';
+  completionRate: number; // 0–1 (done blocks / total blocks at this hour × intensity)
+  count: number;          // number of completed blocks — used as minimum threshold
+}
+
+export interface MonthlyNarrative {
+  year: number;
+  month: number;  // 1–12
+  narrative: string | null;
+}
+
 export interface ResurfacedReflection {
   id: number;
   energy_win: string;
@@ -68,6 +81,8 @@ export type DashboardData = {
   };
   resurfacedReflection: ResurfacedReflection | null;
   milestone: MilestoneData | null;
+  monthlyNarrative: MonthlyNarrative | null;
+  energyPatterns: EnergyPattern[];
 };
 
 export interface UserProfile {
