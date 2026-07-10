@@ -1,63 +1,53 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getCurriculumById, getLatestCompletedSession, getActiveSession } from '@/lib/db';
-import { parseModules } from '@/lib/curriculum-types';
-import type { ChatMessage } from '@/lib/curriculum-types';
+import { getCurriculum, getOpenSession, createSession, getSession } from '@/lib/data';
 import { SessionChat } from '@/components/session-chat';
-import { ObjectivesPanel } from '@/components/objectives-panel';
 
 export const dynamic = 'force-dynamic';
 
-interface Props {
+export default async function SessionPage({
+  params,
+  searchParams,
+}: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ module?: string }>;
-}
-
-export default async function SessionPage({ params, searchParams }: Props) {
+  searchParams: Promise<{ m?: string }>;
+}) {
   const { id } = await params;
-  const { module: moduleParam } = await searchParams;
-  const moduleIndex = parseInt(moduleParam ?? '0', 10);
+  const { m } = await searchParams;
+  const curriculumId = Number(id);
+  const moduleIndex = Number(m ?? 0);
+  if (!Number.isInteger(curriculumId) || !Number.isInteger(moduleIndex)) notFound();
 
-  const curriculum = getCurriculumById(Number(id));
-  if (!curriculum) notFound();
+  const curriculum = await getCurriculum(curriculumId);
+  if (!curriculum || !curriculum.modules[moduleIndex]) notFound();
+  const module = curriculum.modules[moduleIndex];
 
-  const modules = parseModules(curriculum.modulesJson);
-  const mod = modules[moduleIndex];
-  if (!mod) notFound();
-
-  const priorSession = getLatestCompletedSession(curriculum.id, moduleIndex);
-
-  // Resume an in-progress session if one exists — prevents data loss on navigation away
-  const activeSession = getActiveSession(curriculum.id, moduleIndex);
-  const initialSessionId = activeSession?.id ?? null;
-  const initialHistory: ChatMessage[] = activeSession
-    ? (JSON.parse(activeSession.chatHistoryJson) as ChatMessage[])
-    : [];
+  // Resume the open session for this module, or start a fresh one.
+  let session = await getOpenSession(curriculumId, moduleIndex);
+  if (!session) {
+    const sessionId = await createSession(curriculumId, moduleIndex);
+    session = await getSession(sessionId);
+    if (!session) notFound();
+  }
 
   return (
-    <main className="page-wrapper" style={{ paddingTop: 'var(--space-6)' }}>
-      <div style={{ marginBottom: 'var(--space-4)' }}>
-        <a href={`/learn/${curriculum.id}`} style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textDecoration: 'none' }}>
-          ← {curriculum.title}
-        </a>
+    <main className="mt-6">
+      <div className="flex items-baseline justify-between gap-3">
+        <div>
+          <p className="text-xs text-muted">
+            <Link href={`/learn/${curriculumId}`} className="text-muted no-underline hover:text-ink">
+              {curriculum.title}
+            </Link>
+            {' · '}module {moduleIndex + 1} of {curriculum.modules.length}
+          </p>
+          <h1 className="serif mt-0.5 text-xl font-semibold">{module.title}</h1>
+        </div>
       </div>
-      <div style={{ marginBottom: 'var(--space-4)' }}>
-        <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--accent-muted)', marginBottom: 'var(--space-1)' }}>
-          Module {moduleIndex + 1}
-        </p>
-        <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--space-1)' }}>
-          {mod.title}
-        </h1>
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{mod.description}</p>
-      </div>
-
-      <ObjectivesPanel objectives={mod.learningObjectives} practicalExercise={mod.practicalExercise} />
-
       <SessionChat
-        curriculumId={curriculum.id}
-        moduleIndex={moduleIndex}
-        priorFuzzy={priorSession?.whatsFuzzy ?? null}
-        initialSessionId={initialSessionId}
-        initialHistory={initialHistory}
+        sessionId={session.id}
+        curriculumId={curriculumId}
+        initialMessages={session.messages}
+        alreadyCompleted={Boolean(session.completed_at)}
       />
     </main>
   );

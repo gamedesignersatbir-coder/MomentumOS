@@ -1,58 +1,35 @@
-# Momentum OS
+# AAJ
 
-Momentum OS is a polished local-first productivity app for Satbir. It combines a daily execution board, structured learning tracker, weekly review analytics, a searchable prompt library, and a nightly reflection flow that produces a deterministic next-day suggestion.
+*aaj* — "today". One page for the day: up to three tasks, a briefing that
+ends, an AI tutor that remembers what was fuzzy, and one optional line at
+night. Single user, passcode-gated, hosted on Netlify + Supabase.
 
-## Stack
+Built as the deliberate replacement for MomentumOS after an audit and
+research pass on why personal "life OS" apps get abandoned. The design
+rules live in `CLAUDE.md` ("The Five Laws").
 
-- Next.js app router
-- TypeScript
-- Tailwind CSS
-- Local SQLite via Node `node:sqlite`
+## Run locally
 
-## Features
+```bash
+cp .env.example .env.local   # fill in Supabase + passcode + OpenRouter
+npm install
+npm run dev
+```
 
-- Daily Plan board with top priorities, focus blocks, and quick tasks
-- Learning Sprint tracker with topic, minutes, notes, confidence, and next action
-- Weekly Review dashboard with streaks, learning minutes, and completion trend
-- Smart Prompt Library with searchable tags and one-click copy
-- Nightly Reflection modal with three prompts and a deterministic next-day suggestion
-- Responsive layout, keyboard shortcuts, empty states, loading state, and toast feedback
+Apply `supabase/migrations/0001_init.sql` to your Supabase project once
+(SQL editor or CLI).
 
-## Setup
+## Deploy
 
-1. Ensure the local workspace has a compatible `node_modules` install available.
-2. Run `npm run dev`.
-3. Open `http://localhost:3000`.
+Netlify auto-builds from this repo (`netlify.toml`); set the same env vars
+in the Netlify site settings.
 
-Available scripts:
+## Migrating from MomentumOS
 
-- `npm run dev`
-- `npm run build`
-- `npm run lint`
-- `npm run test`
-- `npm run seed`
+On the machine with the old app:
 
-## Architecture
+```bash
+node scripts/export-momentumos.mjs   # writes aaj-export.json (also a full archive)
+```
 
-- `app/page.tsx`: server entry point that loads the dashboard data
-- `app/actions.ts`: server actions for create/update flows
-- `lib/db.ts`: SQLite schema, seed bootstrap, queries, and write operations
-- `lib/reflection.ts`: deterministic next-day suggestion logic
-- `components/momentum-dashboard.tsx`: client-side shell and interactions
-- `components/ui/*`: lightweight shadcn-style UI primitives
-
-## Seed Data
-
-The initial dataset is tailored for Satbir and includes:
-
-- Game design priorities around boss telegraphs and combat feel
-- AI learning sprints and prompt patterns
-- Family planning reminders and review cues
-
-## Screenshots
-
-![Dashboard overview placeholder](./docs/screenshots/dashboard-overview.png)
-![Nightly reflection placeholder](./docs/screenshots/nightly-reflection.png)
-![Prompt library placeholder](./docs/screenshots/prompt-library.png)
-
-Create the files above when you capture final screenshots.
+Then AAJ → Settings → Import, upload the file.

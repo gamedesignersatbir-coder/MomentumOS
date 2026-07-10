@@ -1,101 +1,92 @@
-export interface MilestoneData {
-  day: 30 | 100;
-  narrative: string | null; // null = not yet generated
-}
-
-export interface EnergyPattern {
-  hour: number;           // 0–23, extracted from focus_blocks.start_time ("09:00" → 9)
-  intensity: 'Deep' | 'Steady' | 'Light';
-  completionRate: number; // 0–1 (done blocks / total blocks at this hour × intensity)
-  count: number;          // number of completed blocks — used as minimum threshold
-}
-
-export interface MonthlyNarrative {
-  year: number;
-  month: number;  // 1–12
-  narrative: string | null;
-}
-
-export interface ResurfacedReflection {
-  id: number;
-  energy_win: string;
-  learning_edge: string;
-  family_note: string;
-  suggestion: string;
-  created_at: string;
-  resurfaced_at: string | null;
-  days_ago: number;
-}
-
-export type DashboardData = {
-  priorities: Array<{
-    id: number;
-    title: string;
-    detail: string;
-    status: string;
-    rank: number;
-    intensity?: string | null;
-    updated_at?: string;
-  }>;
-  focusBlocks: Array<{
-    id: number;
-    label: string;
-    startTime: string;
-    endTime: string;
-    intensity: string;
-    status: string;
-  }>;
-  quickTasks: Array<{
-    id: number;
-    title: string;
-    status: string;
-  }>;
-  learningEntries: Array<{
-    id: number;
-    topic: string;
-    minutes: number;
-    notes: string;
-    confidence: number;
-    nextAction: string;
-  }>;
-  prompts: Array<{
-    id: number;
-    title: string;
-    content: string;
-    tags: string[];
-  }>;
-  tags: string[];
-  weeklyTrend: Array<{
-    date: string;
-    label: string;
-    completionRate: number;
-  }>;
-  summary: {
-    completedPriorities: number;
-    completedToday: number;
-    learningMinutesWeek: number;
-    streakDays: number;
-    momentumScore: number;
-    nextReviewCue: string;
-    learningConfidenceAverage: number;
-  };
-  resurfacedReflection: ResurfacedReflection | null;
-  milestone: MilestoneData | null;
-  monthlyNarrative: MonthlyNarrative | null;
-  energyPatterns: EnergyPattern[];
-};
-
-export interface UserProfile {
-  id: number;
+export interface Settings {
   display_name: string;
   timezone: string;
-  sadhana_morning_end: number;
-  sadhana_afternoon_start: number;
-  sadhana_afternoon_end: number;
-  work_start: number;
-  work_end: number;
-  domains_json: string;
-  about_me: string;
+  first_used_at: string;
+}
+
+export interface Task {
+  id: number;
+  title: string;
+  url: string | null;
+  status: 'active' | 'done' | 'dropped';
+  day: string; // YYYY-MM-DD in the user's timezone
   created_at: string;
-  updated_at: string;
+  done_at: string | null;
+}
+
+export interface Reflection {
+  id: number;
+  day: string;
+  text: string;
+  created_at: string;
+}
+
+export interface CurriculumModule {
+  id: string;
+  title: string;
+  description: string;
+  estimatedMinutes: number;
+  learningObjectives: string[];
+  coreConceptsToMaster?: string[];
+  practicalExercise?: string;
+}
+
+export interface Curriculum {
+  id: number;
+  title: string;
+  goal: string;
+  modules: CurriculumModule[];
+  created_at: string;
+  archived: boolean;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface Session {
+  id: number;
+  curriculum_id: number;
+  module_index: number;
+  messages: ChatMessage[];
+  fuzzy: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface Review {
+  curriculum_id: number;
+  module_index: number;
+  stage: number;
+  due: string;
+  dismissed: boolean;
+}
+
+export interface BriefingItem {
+  title: string;
+  url: string;
+  source: string;
+  publishedAt: string; // ISO
+}
+
+export interface Briefing {
+  window_key: string;
+  items: BriefingItem[];
+  created_at: string;
+}
+
+export interface SavedItem {
+  id: number;
+  title: string;
+  url: string;
+  source: string | null;
+  saved_at: string;
+}
+
+export interface Source {
+  id: number;
+  name: string;
+  url: string;
+  enabled: boolean;
 }

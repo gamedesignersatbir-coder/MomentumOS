@@ -1,151 +1,64 @@
-import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getCurriculumById, getSessionsForCurriculum, getSavedStoriesByCategory } from '@/lib/db';
-import { parseModules } from '@/lib/curriculum-types';
-import { ModuleCard } from '@/components/module-card';
+import { notFound } from 'next/navigation';
+import { getCurriculum, getSessionsForCurriculum } from '@/lib/data';
+import { ArchiveCurriculumButton } from '@/components/archive-curriculum-button';
 
 export const dynamic = 'force-dynamic';
 
-function domainToCategory(domain: string): 'gaming' | 'ai' | null {
-  const d = domain.toLowerCase();
-  if (d.includes('game') || d.includes('unity') || d.includes('godot') || d.includes('pixel') || d.includes('level design')) return 'gaming';
-  if (d.includes(' ai') || d.startsWith('ai') || d.includes('ml') || d.includes('machine') || d.includes('llm') || d.includes('neural') || d.includes('deep learning') || d.includes('model')) return 'ai';
-  return null;
-}
-
-interface Props {
+export default async function CurriculumPage({
+  params,
+}: {
   params: Promise<{ id: string }>;
-}
-
-export default async function CurriculumPage({ params }: Props) {
+}) {
   const { id } = await params;
-  const curriculum = getCurriculumById(Number(id));
+  const curriculumId = Number(id);
+  if (!Number.isInteger(curriculumId)) notFound();
+
+  const curriculum = await getCurriculum(curriculumId);
   if (!curriculum) notFound();
 
-  const modules = parseModules(curriculum.modulesJson);
-  const sessions = getSessionsForCurriculum(curriculum.id);
-
-  const relatedCategory = domainToCategory(curriculum.domain);
-  const relatedStories = relatedCategory
-    ? getSavedStoriesByCategory(relatedCategory).slice(0, 3)
-    : [];
-
-  const completedModuleIndices = new Set(
-    sessions.filter((s) => s.completedAt !== null).map((s) => s.moduleIndex)
+  const sessions = await getSessionsForCurriculum(curriculumId);
+  const completedModules = new Set(
+    sessions.filter((s) => s.completed_at).map((s) => s.module_index)
+  );
+  const openModules = new Set(
+    sessions.filter((s) => !s.completed_at).map((s) => s.module_index)
   );
 
-  const completedCount = completedModuleIndices.size;
-  const totalCount = modules.length;
-  const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-
   return (
-    <main className="page-wrapper">
-      <div style={{ maxWidth: 720, paddingTop: 'var(--space-8)' }}>
-        <div style={{ marginBottom: 'var(--space-6)' }}>
-          <Link href="/learn" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textDecoration: 'none' }}>
-            ← Learning Coach
-          </Link>
-        </div>
+    <main className="mt-8">
+      <h1 className="serif text-2xl font-semibold">{curriculum.title}</h1>
+      <p className="mt-1 text-sm text-muted">{curriculum.goal}</p>
 
-        <div style={{ marginBottom: 'var(--space-6)' }}>
-          <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--accent-muted)', marginBottom: 'var(--space-2)' }}>
-            {curriculum.domain}
-          </p>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--space-2)' }}>
-            {curriculum.title}
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 'var(--space-5)' }}>
-            {curriculum.goalStatement}
-          </p>
-
-          {/* Progress bar */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 'var(--space-2)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                {completedCount === 0
-                  ? 'Not started'
-                  : completedCount === totalCount
-                    ? 'Complete'
-                    : `${completedCount} of ${totalCount} modules complete`}
-              </span>
-              {completedCount > 0 && (
-                <span style={{ fontSize: '0.75rem', color: 'var(--accent-muted)', fontWeight: 600 }}>
-                  {progressPct}%
-                </span>
-              )}
-            </div>
-            <div style={{
-              height: 3,
-              background: 'rgba(255,255,255,0.06)',
-              borderRadius: 99,
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                height: '100%',
-                width: `${progressPct}%`,
-                background: completedCount === totalCount ? 'var(--success)' : 'var(--accent)',
-                borderRadius: 99,
-                transition: 'width 0.4s ease',
-              }} />
-            </div>
-          </div>
-        </div>
-
-        {/* Module map */}
-        <div>
-          {modules.map((mod, index) => (
-            <ModuleCard
-              key={mod.id}
-              index={index}
-              curriculumId={curriculum.id}
-              title={mod.title}
-              description={mod.description}
-              estimatedMinutes={mod.estimatedMinutes}
-              learningObjectives={mod.learningObjectives}
-              done={completedModuleIndices.has(index)}
-              isLast={index === modules.length - 1}
-            />
-          ))}
-        </div>
-
-        {relatedStories.length > 0 && (
-          <section style={{ marginTop: 'var(--space-8)' }}>
-            <h2 style={{
-              fontSize: '0.75rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.22em',
-              color: 'var(--text-muted)',
-              marginBottom: 'var(--space-4)',
-            }}>
-              Related reading
-            </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-              {relatedStories.map(story => (
-                <a
-                  key={story.id}
-                  href={story.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'block',
-                    padding: 'var(--space-4)',
-                    borderRadius: '20px',
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-surface)',
-                    textDecoration: 'none',
-                  }}
+      <ol className="mt-6 space-y-2">
+        {curriculum.modules.map((module, index) => {
+          const done = completedModules.has(index);
+          const open = openModules.has(index);
+          return (
+            <li key={module.id ?? index} className="rounded-xl border border-line p-4">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className={`font-semibold ${done ? 'text-muted' : ''}`}>
+                  <span className="mr-2 text-sm text-faint">{index + 1}</span>
+                  {module.title}
+                  {done && <span className="ml-2 text-xs text-accent">done</span>}
+                </p>
+                <Link
+                  href={`/learn/${curriculum.id}/session?m=${index}`}
+                  className="flex-none text-sm text-accent no-underline hover:underline"
                 >
-                  <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)', marginBottom: 'var(--space-1)' }}>
-                    {story.title}
-                  </p>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {story.source}
-                  </p>
-                </a>
-              ))}
-            </div>
-          </section>
-        )}
+                  {open ? 'continue' : done ? 'revisit' : 'start'}
+                </Link>
+              </div>
+              <p className="mt-1 text-sm text-muted">{module.description}</p>
+              <p className="mt-1 text-xs text-faint">~{module.estimatedMinutes} min</p>
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className="mt-8 flex items-center justify-between">
+        <Link href="/" className="text-sm text-muted no-underline hover:text-ink">← today</Link>
+        <ArchiveCurriculumButton id={curriculum.id} />
       </div>
     </main>
   );

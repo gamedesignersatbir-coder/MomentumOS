@@ -1,22 +1,19 @@
-import { CurriculumBuilderForm } from '@/components/curriculum-builder-form';
+import { NewCurriculumForm } from '@/components/new-curriculum-form';
 
-interface NewCurriculumPageProps {
+export default async function NewCurriculumPage({
+  searchParams,
+}: {
   searchParams: Promise<{ goal?: string }>;
-}
-
-export default async function NewCurriculumPage({ searchParams }: NewCurriculumPageProps) {
+}) {
   const { goal } = await searchParams;
+
   return (
-    <main className="page-wrapper">
-      <div style={{ maxWidth: 560, paddingTop: 'var(--space-8)' }}>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--space-2)' }}>
-          New Curriculum
-        </h1>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-8)', fontSize: '0.9rem' }}>
-          Describe what you want to learn. The AI builds a structured path.
-        </p>
-        <CurriculumBuilderForm defaultGoal={goal} />
-      </div>
+    <main className="mt-8">
+      <h1 className="serif text-2xl font-semibold">New curriculum</h1>
+      <p className="mt-1 text-sm text-muted">
+        One goal in, 5–7 modules out. Your tutor takes it from there.
+      </p>
+      <NewCurriculumForm initialGoal={goal ?? ''} />
     </main>
   );
 }

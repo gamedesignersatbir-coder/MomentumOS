@@ -1,281 +1,181 @@
 'use client';
 
-import { useState, useTransition, useRef, useEffect } from 'react';
-import { sendMessageAction, savePostSessionAction, startSessionWithIntroAction } from '@/app/learn/actions';
-import type { ChatMessage } from '@/lib/curriculum-types';
-import { Send } from 'lucide-react';
-import SyntaxHighlighter from 'react-syntax-highlighter';
-import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { useEffect, useRef, useState, useTransition } from 'react';
+import Link from 'next/link';
+import { startSessionIntro, sendMessage, endSession, saveFuzzy } from '@/app/actions';
+import { renderMarkdown } from '@/lib/markdown';
+import type { ChatMessage } from '@/lib/types';
 
-function MarkdownContent({ text }: { text: string }) {
-  // Split on fenced code blocks first
-  const segments = text.split(/(```[\w]*\n[\s\S]*?```)/g);
+type Phase = 'intro-pending' | 'intro-failed' | 'chatting' | 'ended';
 
-  return (
-    <div style={{ lineHeight: 1.6 }}>
-      {segments.map((seg, si) => {
-        const codeMatch = seg.match(/^```([\w]*)\n([\s\S]*?)```$/);
-        if (codeMatch) {
-          const lang = codeMatch[1] || 'text';
-          const code = codeMatch[2];
-          return (
-            <div key={si} style={{ margin: '0.5em 0', borderRadius: 'var(--radius-sm)', overflow: 'hidden', fontSize: '0.82em' }}>
-              <SyntaxHighlighter language={lang} style={atomOneDark} customStyle={{ margin: 0, borderRadius: 0, background: '#1a1a24' }}>
-                {code}
-              </SyntaxHighlighter>
-            </div>
-          );
-        }
-
-        // Render inline markdown for non-code segments
-        const lines = seg.split('\n');
-        return (
-          <span key={si}>
-            {lines.map((line, i) => {
-              const renderInline = (s: string) => {
-                const parts: React.ReactNode[] = [];
-                const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
-                let last = 0, m: RegExpExecArray | null;
-                while ((m = re.exec(s)) !== null) {
-                  if (m.index > last) parts.push(s.slice(last, m.index));
-                  if (m[2]) parts.push(<strong key={m.index}>{m[2]}</strong>);
-                  else if (m[3]) parts.push(<em key={m.index}>{m[3]}</em>);
-                  else if (m[4]) parts.push(<code key={m.index} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 3, padding: '1px 5px', fontSize: '0.85em', fontFamily: 'monospace' }}>{m[4]}</code>);
-                  last = m.index + m[0].length;
-                }
-                if (last < s.length) parts.push(s.slice(last));
-                return parts;
-              };
-
-              if (line.startsWith('### ')) return <h3 key={i} style={{ fontWeight: 700, marginTop: '0.75em', marginBottom: '0.25em', fontSize: '1em' }}>{line.slice(4)}</h3>;
-              if (line.startsWith('## ')) return <h2 key={i} style={{ fontWeight: 700, marginTop: '0.75em', marginBottom: '0.25em', fontSize: '1.05em' }}>{line.slice(3)}</h2>;
-              if (line.startsWith('# ')) return <h1 key={i} style={{ fontWeight: 700, marginTop: '0.75em', marginBottom: '0.25em', fontSize: '1.1em' }}>{line.slice(2)}</h1>;
-              if (/^(\d+)\. /.test(line)) return <div key={i} style={{ marginLeft: '1.2em' }}>{renderInline(line)}</div>;
-              if (line.startsWith('- ') || line.startsWith('* ')) return <div key={i} style={{ marginLeft: '1.2em' }}>• {renderInline(line.slice(2))}</div>;
-              if (line.trim() === '') return <div key={i} style={{ height: '0.6em' }} />;
-              return <div key={i}>{renderInline(line)}</div>;
-            })}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
-interface Props {
+export function SessionChat(props: {
+  sessionId: number;
   curriculumId: number;
-  moduleIndex: number;
-  priorFuzzy: string | null;
-  initialSessionId: number | null; // null = no active session yet
-  initialHistory: ChatMessage[];
-}
-
-export function SessionChat({ curriculumId, moduleIndex, priorFuzzy, initialSessionId, initialHistory }: Props) {
-  const [sessionId, setSessionId] = useState<number | null>(initialSessionId);
-  const [messages, setMessages] = useState<ChatMessage[]>(initialHistory);
-  const [inputValue, setInputValue] = useState('');
-  const [isPending, startTransition] = useTransition();
+  initialMessages: ChatMessage[];
+  alreadyCompleted: boolean;
+}) {
+  const [messages, setMessages] = useState<ChatMessage[]>(props.initialMessages);
+  const [phase, setPhase] = useState<Phase>(
+    props.alreadyCompleted ? 'ended' : props.initialMessages.length === 0 ? 'intro-pending' : 'chatting'
+  );
+  const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [showPostLoop, setShowPostLoop] = useState(false);
-  const [postDone, setPostDone] = useState(false);
-  const [postError, setPostError] = useState<string | null>(null);
-  const [postPending, startPostTransition] = useTransition();
+  const [waiting, setWaiting] = useState(false);
+  const [fuzzy, setFuzzy] = useState('');
+  const [fuzzySaved, setFuzzySaved] = useState(false);
+  const [, startTransition] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
-  const introFiredRef = useRef(false);
+  const introFired = useRef(false);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Auto-fire opening message when session has no history yet.
-  // introFiredRef guards against double-invocation (React Strict Mode / HMR).
-  useEffect(() => {
-    if (initialHistory.length > 0 || initialSessionId !== null) return;
-    if (introFiredRef.current) return;
-    introFiredRef.current = true;
+  function runIntro() {
+    setPhase('intro-pending');
+    setError(null);
     startTransition(async () => {
-      const result = await startSessionWithIntroAction(curriculumId, moduleIndex);
-      if (!result.ok) { setError(result.message); return; }
-      setSessionId(result.sessionId);
-      setMessages([{ role: 'assistant', content: result.intro, createdAt: new Date().toISOString() }]);
+      const result = await startSessionIntro(props.sessionId);
+      if (result.error) {
+        setError(result.error);
+        setPhase('intro-failed');
+      } else {
+        if (result.intro) setMessages([{ role: 'assistant', content: result.intro }]);
+        setPhase('chatting');
+      }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }
+
+  useEffect(() => {
+    if (phase === 'intro-pending' && !introFired.current) {
+      introFired.current = true;
+      runIntro();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, waiting]);
+
   function handleSend() {
-    const content = inputValue.trim();
-    if (!content || isPending) return;
-    setInputValue('');
+    const text = draft.trim();
+    if (!text || waiting || phase !== 'chatting') return;
+    setDraft('');
     setError(null);
-
-    // Optimistically add the user message immediately so the UI feels instant
-    const userMsg: ChatMessage = { role: 'user', content, createdAt: new Date().toISOString() };
-    setMessages((prev) => [...prev, userMsg]);
-
+    setMessages((prev) => [...prev, { role: 'user', content: text }]);
+    setWaiting(true);
     startTransition(async () => {
-      if (sessionId === null) return; // session is created by intro action
-      const result = await sendMessageAction(sessionId, curriculumId, moduleIndex, content);
-      if (!result.ok) { setError(result.message); return; }
-
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: result.reply, createdAt: new Date().toISOString() },
-      ]);
+      const result = await sendMessage(props.sessionId, text);
+      setWaiting(false);
+      if (result.error) {
+        setError(result.error);
+      } else if (result.reply) {
+        setMessages((prev) => [...prev, { role: 'assistant', content: result.reply! }]);
+      }
     });
   }
 
-  function handlePostSubmit(formData: FormData) {
-    if (sessionId === null) return;
-    formData.set('sessionId', String(sessionId));
-    formData.set('curriculumId', String(curriculumId));
-    setPostError(null);
-    startPostTransition(async () => {
-      const result = await savePostSessionAction(formData);
-      if (!result.ok) { setPostError(result.message); return; }
-      setPostDone(true);
+  function handleEnd() {
+    startTransition(async () => {
+      const result = await endSession(props.sessionId);
+      if (result.error) setError(result.error);
+      else setPhase('ended');
     });
-  }
-
-  if (postDone) {
-    return (
-      <div style={{ textAlign: 'center', padding: 'var(--space-12)', color: 'var(--text-secondary)' }}>
-        <p style={{ fontSize: '1.1rem', marginBottom: 'var(--space-4)' }}>Session saved. Review scheduled.</p>
-        <a href={`/learn/${curriculumId}`} className="btn-ghost" style={{ textDecoration: 'none', display: 'inline-block' }}>
-          Back to curriculum
-        </a>
-      </div>
-    );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', maxWidth: 720, margin: '0 auto' }}>
-      {/* Pre-session context */}
-      {priorFuzzy && messages.length === 0 && (
-        <div style={{
-          background: 'var(--accent-subtle)', border: '1px solid rgba(232,169,69,0.15)',
-          borderRadius: 'var(--radius-sm)', padding: 'var(--space-4)',
-          fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-4)',
-        }}>
-          <strong style={{ color: 'var(--accent-muted)' }}>Last session: </strong>
-          {priorFuzzy}
-        </div>
-      )}
+    <div className="mt-4">
+      <div className="space-y-4">
+        {messages.map((message, index) =>
+          message.role === 'assistant' ? (
+            <div key={index} className="text-[15px]">{renderMarkdown(message.content)}</div>
+          ) : (
+            <div key={index} className="ml-8 rounded-xl bg-accent-soft px-4 py-2.5 text-[15px]">
+              {message.content}
+            </div>
+          )
+        )}
 
-      {/* Message list */}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', paddingBottom: 'var(--space-4)' }}>
-        {messages.length === 0 && (
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', textAlign: 'center', paddingTop: 'var(--space-8)' }}>
-            Ask your first question to start the session.
+        {phase === 'intro-pending' && <p className="text-sm text-muted">Your tutor is preparing the session…</p>}
+        {waiting && <p className="text-sm text-muted">Thinking…</p>}
+        {error && (
+          <p className="text-sm text-danger">
+            {error}{' '}
+            {phase === 'intro-failed' && (
+              <button onClick={runIntro} className="text-accent hover:underline">retry</button>
+            )}
           </p>
         )}
-        {messages.map((msg, i) => (
-          <div
-            key={`${msg.role}-${msg.createdAt}-${i}`}
-            style={{
-              alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-              maxWidth: '80%',
-              background: msg.role === 'user' ? 'var(--accent-subtle)' : 'var(--bg-elevated)',
-              border: `1px solid ${msg.role === 'user' ? 'rgba(232,169,69,0.2)' : 'var(--border)'}`,
-              borderRadius: 'var(--radius-md)',
-              padding: 'var(--space-3) var(--space-4)',
-              fontSize: '0.9rem',
-              lineHeight: 1.6,
-              color: 'var(--text-primary)',
-            }}
-          >
-            {msg.role === 'assistant' ? <MarkdownContent text={msg.content} /> : msg.content}
-          </div>
-        ))}
-        {isPending && (
-          <div style={{
-            alignSelf: 'flex-start',
-            background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-4)',
-            color: 'var(--text-muted)', fontSize: '0.875rem',
-          }}>
-            Thinking…
-          </div>
-        )}
-        <div ref={bottomRef} />
       </div>
 
-      {/* Error */}
-      {error && (
-        <p style={{ fontSize: '0.875rem', color: 'var(--error)', marginBottom: 'var(--space-3)' }}>{error}</p>
-      )}
-
-      {/* Input */}
-      {!showPostLoop && (
-        <div style={{ display: 'flex', gap: 'var(--space-2)', borderTop: '1px solid var(--border)', paddingTop: 'var(--space-4)' }}>
+      {phase === 'chatting' && (
+        <div className="sticky bottom-0 mt-6 border-t border-line bg-bg pb-4 pt-3">
           <textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
             }}
-            placeholder="Ask a question… (Enter to send, Shift+Enter for new line)"
-            className="textarea"
-            style={{ flex: 1, minHeight: 48, maxHeight: 120, resize: 'none' }}
-            disabled={isPending}
+            rows={2}
+            maxLength={4000}
+            placeholder="Reply… (Enter to send)"
+            className="w-full rounded-lg border border-line px-4 py-2.5 text-[15px]"
           />
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={isPending || !inputValue.trim()}
-            className="btn-primary"
-            aria-label="Send"
-          >
-            <Send size={16} />
-          </button>
+          <div className="mt-2 flex items-center justify-between">
+            <button
+              onClick={handleEnd}
+              className="text-sm text-muted hover:text-ink hover:underline"
+            >
+              End session — one tap, nothing required
+            </button>
+            <button
+              onClick={handleSend}
+              disabled={waiting || !draft.trim()}
+              className="rounded-full bg-accent px-4 py-1.5 text-sm font-semibold text-bg disabled:opacity-50"
+            >
+              Send
+            </button>
+          </div>
         </div>
       )}
 
-      {/* "I'm done learning" → post-session form */}
-      {!showPostLoop && messages.length > 0 && (
-        <button
-          type="button"
-          className="btn-ghost"
-          style={{ marginTop: 'var(--space-3)', fontSize: '0.85rem' }}
-          onClick={() => setShowPostLoop(true)}
-        >
-          I&apos;m done for this session →
-        </button>
-      )}
-
-      {/* Post-session loop */}
-      {showPostLoop && (
-        <form
-          action={handlePostSubmit}
-          style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
-        >
-          <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>Session wrap-up</h3>
-          <div>
-            <label className="soft-close-label">What landed?</label>
-            <textarea name="whatLanded" className="textarea" rows={2} placeholder="The main insight or technique that clicked." required />
-          </div>
-          <div>
-            <label className="soft-close-label">What&apos;s still fuzzy?</label>
-            <textarea name="whatsFuzzy" className="textarea" rows={2} placeholder="What still feels unclear or needs more time." />
-          </div>
-          <div>
-            <label className="soft-close-label">Confidence (1–5)</label>
-            <select name="confidence" className="input" defaultValue="3">
-              {[1, 2, 3, 4, 5].map((v) => (
-                <option key={v} value={v}>{v} — {['', 'Very shaky', 'Shaky', 'Getting there', 'Solid', 'Confident'][v]}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="soft-close-label">Next action</label>
-            <input name="nextAction" className="input" placeholder="The one thing to try or read next." required />
-          </div>
-          {postError && (
-            <p style={{ fontSize: '0.875rem', color: 'var(--error)' }}>{postError}</p>
+      {phase === 'ended' && (
+        <div className="mt-6 rounded-xl border border-line p-4">
+          <p className="text-sm font-semibold">Session closed.</p>
+          {!fuzzySaved ? (
+            <>
+              <p className="mt-1 text-sm text-muted">
+                Anything still fuzzy? One line, optional — your tutor reads it next time.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={fuzzy}
+                  onChange={(e) => setFuzzy(e.target.value)}
+                  maxLength={400}
+                  placeholder="Still fuzzy…"
+                  className="flex-1 rounded-lg border border-line px-3 py-2 text-sm"
+                />
+                <button
+                  onClick={() =>
+                    startTransition(async () => {
+                      await saveFuzzy(props.sessionId, fuzzy);
+                      setFuzzySaved(true);
+                    })
+                  }
+                  disabled={!fuzzy.trim()}
+                  className="rounded-full bg-accent px-4 py-1.5 text-sm font-semibold text-bg disabled:opacity-50"
+                >
+                  Keep
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="mt-1 text-sm text-muted">Noted — your tutor will pick it up next session.</p>
           )}
-          <button type="submit" className="btn-primary" disabled={postPending}>
-            {postPending ? 'Saving…' : 'Save session'}
-          </button>
-        </form>
+          <Link href="/" className="mt-3 inline-block text-sm text-accent no-underline hover:underline">
+            ← back to today
+          </Link>
+        </div>
       )}
     </div>
   );
